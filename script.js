@@ -33,5 +33,9 @@ function renderEntries() {
   });
 }
 
+function clearEntries() {
+  localStorage.removeItem("entries");
+  renderEntries();
+}
 
 renderEntries();
