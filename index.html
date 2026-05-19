@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Daily Journal</title>
+
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+
+<body>
+
+<div class="phone">
+
+  <div class="app">
+
+    <h1>Mi diario ✏️</h1>
+
+    <!-- CONTENIDO SCROLLEABLE -->
+    <div id="appContent">
+
+      <!-- LOGIN -->
+      <div id="auth" class="screen">
+        <h2>Inicia sesión</h2>
+        <button id="btnGoogle">Entrar con Google</button>
+        <button id="btnEmail">Entrar con Email</button>
+      </div>
+
+      <!-- HOME -->
+      <div id="home" class="screen hidden">
+
+<div id="contador-wrapper">
+  <div id="contador-label">Registros guardados</div>
+  <div id="contador-registros">0</div>
+</div>
+
+        <button id="goDiary">✍️ Escribir diario</button>
+        <button id="goEmotion">😊 Registrar emoción</button>
+        <button id="goSleep">😴 Registrar sueño</button>
+        <button id="goHabits">🧩 Registrar hábitos</button>
+        <button id="goFeed">📚 Ver todas mis entradas</button>
+
+        <button id="btnLogout" class="danger">Cerrar sesión</button>
+      </div>
+
+      <!-- FEED -->
+      <div id="feed" class="screen hidden">
+        <button id="backHomeFeed">← Volver</button>
+        <h2>📚 Todas las entradas</h2>
+        <div id="entriesList"></div>
+      </div>
+
+      <!-- DIARIO -->
+      <div id="diary" class="screen hidden">
+        <button id="backHome1">← Volver</button>
+
+        <select id="moodSelect">
+          <option value="😄">😄 Feliz</option>
+          <option value="😐">😐 Neutral</option>
+          <option value="😢">😢 Triste</option>
+          <option value="😡">😡 Enfadado</option>
+          <option value="😴">😴 Cansado</option>
+        </select>
+
+        <textarea id="entry" placeholder="Escribe cómo te sientes..."></textarea>
+
+        <button id="btnSave">Guardar</button>
+      </div>
+
+      <!-- EMOCIÓN -->
+      <div id="emotion" class="screen hidden">
+        <button id="backHome2">← Volver</button>
+
+        <h2>¿Cómo te sientes?</h2>
+
+        <div class="grid">
+          <button class="moodBtn"><span class="emoji">😄</span><span class="label">Feliz</span></button>
+          <button class="moodBtn"><span class="emoji">😐</span><span class="label">Neutral</span></button>
+          <button class="moodBtn"><span class="emoji">😢</span><span class="label">Triste</span></button>
+          <button class="moodBtn"><span class="emoji">😡</span><span class="label">Enfadado</span></button>
+          <button class="moodBtn"><span class="emoji">😴</span><span class="label">Cansado</span></button>
+        </div>
+
+        <div id="intensityBox">
+          <h3>Intensidad</h3>
+
+          <div class="grid small">
+            <button class="intensityBtn" data-level="1">1</button>
+            <button class="intensityBtn" data-level="2">2</button>
+            <button class="intensityBtn" data-level="3">3</button>
+            <button class="intensityBtn" data-level="4">4</button>
+            <button class="intensityBtn" data-level="5">5</button>
+          </div>
+
+          <h3>¿Lo notas en el cuerpo?</h3>
+
+          <label class="check"><input type="checkbox" value="pecho"> 🫀 Pecho apretado</label>
+          <label class="check"><input type="checkbox" value="barriga"> 🌀 Barriga revuelta</label>
+          <label class="check"><input type="checkbox" value="cabeza"> 🤯 Cabeza pesada</label>
+          <label class="check"><input type="checkbox" value="garganta"> 😤 Garganta tensa</label>
+          <label class="check"><input type="checkbox" value="musculos"> 💪 Tensión muscular</label>
+          <label class="check"><input type="checkbox" value="nada"> 🤷 No lo noto en el cuerpo</label>
+
+          <textarea id="bodyNote"></textarea>
+
+          <button id="saveEmotion">Guardar emoción</button>
+        </div>
+      </div>
+
+      <!-- SUEÑO -->
+      <div id="sleep" class="screen hidden">
+        <button id="backHome3">← Volver</button>
+
+        <h2>¿Cómo ha sido tu sueño?</h2>
+
+        <div class="grid">
+          <button class="sleepMoodBtn"><span class="emoji">😩</span><span class="label">Muy mal</span></button>
+          <button class="sleepMoodBtn"><span class="emoji">😔</span><span class="label">Mal</span></button>
+          <button class="sleepMoodBtn"><span class="emoji">😐</span><span class="label">Normal</span></button>
+          <button class="sleepMoodBtn"><span class="emoji">🙂</span><span class="label">Bien</span></button>
+          <button class="sleepMoodBtn"><span class="emoji">😊</span><span class="label">Muy bien</span></button>
+        </div>
+
+        <h3>Horas</h3>
+
+        <div class="grid small">
+          <button class="sleepHoursBtn" data-hours="-4h">-4h</button>
+          <button class="sleepHoursBtn" data-hours="5h">5h</button>
+          <button class="sleepHoursBtn" data-hours="6h">6h</button>
+          <button class="sleepHoursBtn" data-hours="7h">7h</button>
+          <button class="sleepHoursBtn" data-hours="8h+">8h+</button>
+        </div>
+
+        <h3>Detalles</h3>
+
+        <label class="check"><input type="checkbox" value="Me ha costado dormirme"> ⏰ Me ha costado dormirme</label>
+        <label class="check"><input type="checkbox" value="Me he despertado muchas veces"> 🌊 Me he despertado muchas veces</label>
+        <label class="check"><input type="checkbox" value="He tenido pesadillas"> 👻 He tenido pesadillas</label>
+        <label class="check"><input type="checkbox" value="Me he levantado cansado"> 😵 Me he levantado cansado/a</label>
+        <label class="check"><input type="checkbox" value="He dormido bien"> ⭐ He dormido bien del tirón</label>
+
+        <textarea id="sleepNote"></textarea>
+
+        <button id="saveSleep">Guardar sueño</button>
+      </div>
+
+      <!-- HÁBITOS -->
+      <div id="habits" class="screen hidden">
+        <button id="backHome4">← Volver</button>
+
+        <h2>¿Qué has hecho hoy?</h2>
+
+        <label class="check"><input type="checkbox" value="food"> 🍽️ He comido algo</label>
+        <label class="check"><input type="checkbox" value="water"> 💧 He bebido agua</label>
+        <label class="check"><input type="checkbox" value="walk"> 🚶 He salido o caminado</label>
+        <label class="check"><input type="checkbox" value="meds"> 💊 He tomado medicación</label>
+        <label class="check"><input type="checkbox" value="fun"> 🎮 He hecho algo que me gusta</label>
+        <label class="check"><input type="checkbox" value="breathing"> 🧘 Me he calmado</label>
+        <label class="check"><input type="checkbox" value="talk"> 🗣️ He hablado con alguien</label>
+
+        <textarea id="habitsNote"></textarea>
+
+        <div class="progressBox">
+          <div id="habitProgressText">0/7</div>
+          <div class="progressBar">
+            <div id="habitProgressFill"></div>
+          </div>
+        </div>
+
+        <button id="saveHabits">Guardar hábitos</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="appFooter">
+    <button id="navHome">🏠</button>
+    <button id="navDiary">📓</button>
+    <button id="navFeed">🧾</button>
+    <button id="navEmotion">😊</button>
+    <button id="navSleep">😴</button>
+    <button id="navHabits">🧩</button>
+  </footer>
+
+</div>
+
+<script type="module" src="./script.js"></script>
+
+</body>
+</html>
