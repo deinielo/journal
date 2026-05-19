@@ -1,0 +1,457 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(135deg, #e6f4f1, #f4f8f7, #dcefe9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding-top: env(safe-area-inset-top);
+  background: black;
+}
+
+.app {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+h1 {
+  text-align: center;
+  color: #00896E;
+}
+
+h2 {
+  margin-top: 10px;
+  color: #2b2b2b;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* BOTONES */
+button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+
+  background: #f1f1f1;
+  transition: 0.2s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+.danger {
+  background: #ffdddd;
+}
+
+/* INPUTS */
+textarea, select {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+
+textarea {
+  min-height: 120px;
+  resize: none;
+}
+
+/* GRID EMOCIONES */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .phone {
+    height: 100vh;
+    border-radius: 0;
+  }
+}
+
+.moodBtn {
+  font-size: 30px;
+  background: white;
+  height: 60px;
+  transition: 0.2s;
+}
+
+.moodBtn.active {
+  transform: scale(1.1);
+  background: rgba(0, 137, 110, 0.15);
+  border: 2px solid #00896E;
+}
+
+/* INTENSIDAD */
+.intensityBtn.active {
+  background: #00896E;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* CHECKBOX */
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+
+  padding: 6px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 10px;
+}
+
+/* ENTRADAS */
+#entriesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.entry {
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+#intensityBox {
+  display: block;
+}
+
+.moodBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 4px;
+
+  font-size: 28px;
+}
+
+.moodBtn .label {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.author {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+.entryActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.editBtn {
+  background: #e6f0ff;
+  color: #1a4fff;
+  font-weight: bold;
+}
+
+.deleteBtn {
+  background: #ffe6e6;
+  color: #cc0000;
+  font-weight: bold;
+}
+
+.entryActions button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.sleepMoodBtn.active,
+.sleepHoursBtn.active {
+  transform: scale(1.1);
+  background: rgba(0, 137, 110, 0.15);
+  border: 2px solid #00896E;
+}
+
+/* ---------------- HOME BUTTONS ---------------- */
+
+#home button:not(.danger) {
+  height: 140px;
+  aspect-ratio: 1 / 1;
+  font-size: 20px;
+  font-weight: bold;
+
+  border-radius: 28px;
+
+  background: white;
+
+  border: 2px solid rgba(0,0,0,0.06);
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+
+  transition: 0.2s;
+}
+
+#home button:not(.danger):hover {
+  transform: translateY(-3px) scale(1.02);
+
+  background: #f4fffc;
+
+  border-color: #00a884;
+}
+
+/* LOGOUT */
+
+#btnLogout {
+  margin-top: 10px;
+
+  height: 55px;
+
+  font-size: 16px;
+  font-weight: bold;
+
+  border-radius: 16px;
+  grid-column: 1 / -1;
+}
+
+/* ---------------- GRID BUTTONS ---------------- */
+
+.moodBtn,
+.sleepMoodBtn,
+.intensityBtn,
+.sleepHoursBtn {
+  min-height: 75px;
+
+  border-radius: 18px;
+
+  background: white;
+
+  border: 2px solid transparent;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+
+  transition: 0.2s;
+}
+
+.moodBtn:hover,
+.sleepMoodBtn:hover,
+.intensityBtn:hover,
+.sleepHoursBtn:hover {
+  transform: scale(1.04);
+}
+
+/* ACTIVE */
+
+.moodBtn.active,
+.sleepMoodBtn.active,
+.intensityBtn.active,
+.sleepHoursBtn.active {
+  border-color: #00896E;
+  background: rgba(0, 137, 110, 0.12);
+
+  transform: scale(1.05);
+}
+
+/* EMOJIS MÁS GRANDES */
+
+.moodBtn .emoji,
+.sleepMoodBtn .emoji {
+  font-size: 34px;
+}
+
+/* LABELS */
+
+.moodBtn .label,
+.sleepMoodBtn .label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* CHECKBOX CARDS */
+
+.check {
+  padding: 12px;
+
+  border-radius: 14px;
+
+  background: white;
+
+  border: 1px solid rgba(0,0,0,0.05);
+
+  transition: 0.2s;
+}
+
+.check:hover {
+  transform: translateX(3px);
+  background: #f7fffc;
+}
+
+#home {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.progressBar {
+  width: 100%;
+  height: 14px;
+  background: #636d61;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+#habitProgressFill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00ff99, #00b3ff);
+  transition: width 0.3s ease;
+}
+
+.appFooter {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  height: 60px;
+  background: #111;
+  border-top: 1px solid #333;
+
+  z-index: 1000;
+
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.appFooter button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.appFooter button:active {
+  transform: scale(0.9);
+}
+
+.phone {
+  width: 100%;
+  max-width: 420px;
+  height: 90vh;
+  background: #e6e6e6;
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+#appContent {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+
+.appFooter {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+  background: white;
+  border-top: 1px solid #ddd;
+}
+
+.appFooter button {
+  font-size: 20px;
+  background: none;
+  border: none;
+  color: #aaa;
+  transition: 0.2s;
+}
+
+.appFooter button:hover {
+  color: white;
+  transform: scale(1.15);
+}
+
+#contador-registros {
+  font-size: 28px;
+  font-weight: 800;
+  color: #00896E;
+}
+
+/* efecto cuando cambia el número */  
+#contador-registros:active {
+  transform: scale(1.05);
+}
+
+#contador-wrapper {
+  grid-column: 1 / -1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 18px;
+  border-radius: 18px;
+
+  background: white;
+  border: 2px solid rgba(0,0,0,0.06);
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+
+  font-weight: bold;
+}
+
+#contador-wrapper small {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 1px;
+}
+
+#contador-label {
+  font-size: 20px;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.patientGroup {
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.patientTitle {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
