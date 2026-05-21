@@ -311,16 +311,9 @@ if (!snap.exists()) {
 
   isPro = role === "pro";
 
-if (unsubCounter) unsubCounter();
-
-const counterRef = isPro
+  const counterRef = isPro
   ? collection(db, "entries")
   : query(collection(db, "entries"), where("uid", "==", user.uid));
-
-unsubCounter = onSnapshot(counterRef, (snapshot) => {
-  const el = $("contador-registros");
-  if (el) el.textContent = snapshot.size;
-});
 
 onSnapshot(counterRef, (snapshot) => {
   const el = $("contador-registros");
