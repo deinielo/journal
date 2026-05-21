@@ -297,8 +297,8 @@ onAuthStateChanged(auth, async (user) => {
   if (unsub) unsub();
 
   const ref = isPro
-    ? query(collection(db, "entries"), orderBy("createdAt", "desc"))
-    : query(collection(db, "entries"), where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+    ? query(collection(db, "entries"),
+    : query(collection(db, "entries"), where("uid", "==", user.uid),);
 
   unsub = onSnapshot(ref, (snap) => {
 
