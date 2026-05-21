@@ -198,8 +198,8 @@ $("btnSave")?.addEventListener("click", async () => {
   $("entryMood").value = "";
   $("entryGood").value = "";
   $("entryHard").value = "";
-  show("home");
 });
+  show("home");
 
 // ---------------- SAVE EMOTION ----------------
 
