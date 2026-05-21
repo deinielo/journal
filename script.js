@@ -307,10 +307,15 @@ if (!snap.exists()) {
 
   if (unsub) unsub();
 
-  const ref = isPro
-    ? query(collection(db, "entries"))
-    : query(collection(db, "entries"),
-  where("uid", "==", user.uid));
+const baseQuery = collection(db, "entries");
+
+const ref = isPro
+  ? query(baseQuery, orderBy("createdAt", "desc"))
+  : query(
+      baseQuery,
+      where("uid", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
 
   unsub = onSnapshot(ref, (snap) => {
 
