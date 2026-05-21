@@ -86,7 +86,10 @@ textarea {
   .phone {
     height: 100vh;
     border-radius: 0;
+    .appFooter button span:not(.icon) {
+    font-size: 10px;
   }
+}
 }
 
 .moodBtn {
