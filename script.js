@@ -14,7 +14,8 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  getDoc
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
@@ -44,6 +45,7 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let isPro = false;
 let unsub = null;
+let unsubCounter = null;
 
 // ---------------- UI ----------------
 
@@ -60,13 +62,6 @@ const screens = {
 };
 
 const entriesList = $("entriesList");
-
-// ---------------- CONTADOR ----------------
-
-onSnapshot(ref, (snapshot) => {
-  const el = $("contador-registros");
-  if (el) el.textContent = snapshot.size;
-});
 
 // ---------------- DATE ----------------
 
@@ -179,7 +174,6 @@ $("btnSave")?.addEventListener("click", async () => {
   const mood = $("moodSelect")?.value;
 
   if (!currentUser) return;
-
   if (!moodText && !good && !hard) return;
 
   await addDoc(collection(db, "entries"), {
@@ -197,7 +191,7 @@ $("btnSave")?.addEventListener("click", async () => {
   $("entryGood").value = "";
   $("entryHard").value = "";
 
-  show("home"); // 👈 AQUÍ dentro
+  show("home");
 });
 
 // ---------------- SAVE EMOTION ----------------
@@ -246,17 +240,17 @@ $("saveSleep")?.addEventListener("click", async () => {
   const checks = Array.from(document.querySelectorAll("#sleep input:checked")).map(i => i.value);
   const note = $("sleepNote")?.value || "";
 
-await addDoc(collection(db, "entries"), {
-  type: "sleep",
-  sleepMood: mood,
-  sleepMoodEmoji: activeSleep?.querySelector(".emoji")?.textContent || "",
-  sleepHours: hours,
-  sleepChecks: checks,
-  sleepNote: note,
-  uid: currentUser.uid,
-  author: currentUser.email,
-  createdAt: serverTimestamp()
-});
+  await addDoc(collection(db, "entries"), {
+    type: "sleep",
+    sleepMood: mood,
+    sleepMoodEmoji: activeSleep?.querySelector(".emoji")?.textContent || "",
+    sleepHours: hours,
+    sleepChecks: checks,
+    sleepNote: note,
+    uid: currentUser.uid,
+    author: currentUser.email,
+    createdAt: serverTimestamp()
+  });
 
   show("home");
 });
@@ -269,15 +263,15 @@ $("saveHabits")?.addEventListener("click", async () => {
   const habits = Array.from(document.querySelectorAll("#habits input:checked")).map(i => i.value);
   const note = $("habitsNote")?.value || "";
 
-await addDoc(collection(db, "entries"), {
-  type: "habits",
-  habits,
-  habitsEmoji: "🧠", // o el emoji que uses en UI (ver nota abajo)
-  note,
-  uid: currentUser.uid,
-  author: currentUser.email,
-  createdAt: serverTimestamp()
-});
+  await addDoc(collection(db, "entries"), {
+    type: "habits",
+    habits,
+    habitsEmoji: "🧠",
+    note,
+    uid: currentUser.uid,
+    author: currentUser.email,
+    createdAt: serverTimestamp()
+  });
 
   show("home");
 });
@@ -296,16 +290,16 @@ onAuthStateChanged(auth, async (user) => {
   show("home");
 
   const userRef = doc(db, "users", user.uid);
-const snap = await getDoc(userRef);
+  const snap = await getDoc(userRef);
 
-if (!snap.exists()) {
-  await setDoc(userRef, {
-    email: user.email,
-    role: "user",
-    provider: user.providerData[0]?.providerId || "password",
-    createdAt: serverTimestamp()
-  });
-}
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      role: "user",
+      provider: user.providerData[0]?.providerId || "password",
+      createdAt: serverTimestamp()
+    });
+  }
 
   let role = "user";
 
@@ -316,17 +310,28 @@ if (!snap.exists()) {
 
   isPro = role === "pro";
 
+  // ---------------- CONTADOR (FIX) ----------------
+
+  if (unsubCounter) unsubCounter();
+
+  const counterRef = isPro
+    ? collection(db, "entries")
+    : query(collection(db, "entries"), where("uid", "==", user.uid));
+
+  unsubCounter = onSnapshot(counterRef, (snapshot) => {
+    const el = $("contador-registros");
+    if (el) el.textContent = snapshot.size;
+  });
+
+  // ---------------- ENTRADAS ----------------
+
   if (unsub) unsub();
 
-const baseQuery = collection(db, "entries");
+  const baseQuery = collection(db, "entries");
 
-const ref = isPro
-  ? query(baseQuery, orderBy("createdAt", "desc"))
-  : query(
-      baseQuery,
-      where("uid", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+  const ref = isPro
+    ? query(baseQuery, orderBy("createdAt", "desc"))
+    : query(baseQuery, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
   unsub = onSnapshot(ref, (snap) => {
 
@@ -339,73 +344,50 @@ const ref = isPro
       return;
     }
 
-    // ---------------- FIX IMPORTANTE: AGRUPAR POR USUARIO ----------------
+    if (isPro) {
 
-// ---------------- PRO VIEW (AGRUPADO BIEN) ----------------
+      const grouped = {};
 
-if (isPro) {
+      snap.forEach(d => {
+        const e = d.data();
+        const key = e.author || e.uid || "Desconocido";
 
-  const grouped = {};
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(e);
+      });
 
-  snap.forEach(d => {
-    const e = d.data();
+      Object.entries(grouped).forEach(([user, items]) => {
 
-    // clave de usuario estable
-    const key = e.author || e.uid || "Desconocido";
+        const section = document.createElement("div");
+        section.className = "patientGroup";
 
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(e);
-  });
+        section.innerHTML = `<h3>👤 ${user}</h3>`;
 
-  // 🔥 IMPORTANTE: limpiar antes de pintar (evita duplicados raros)
-  entriesList.innerHTML = "";
+        items.forEach(e => {
 
-  Object.entries(grouped).forEach(([user, items]) => {
+          const div = document.createElement("div");
+          div.className = "entry";
 
-    const section = document.createElement("div");
-    section.className = "patientGroup";
+          div.innerHTML = `
+            <div class="date">📅 ${formatDate(e.createdAt)}</div>
+            <div><strong>${e.mood || e.sleepMood || e.habitsEmoji || e.type}</strong></div>
 
-    section.innerHTML = `<h3>👤 ${user}</h3>`;
+            ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+            ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+            ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
 
-    items.forEach(e => {
+            <small>${e.author ?? ""}</small>
+          `;
 
-      const div = document.createElement("div");
-      div.className = "entry";
+          section.appendChild(div);
+        });
 
-      div.innerHTML = `
-        <div class="date">📅 ${formatDate(e.createdAt)}</div>
+        entriesList.appendChild(section);
+      });
 
-        <div>
-          <strong>${e.mood || e.sleepMood || e.habitsEmoji || e.type || "Entrada"}</strong>
-        </div>
+      return;
+    }
 
-        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
-        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
-        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-        ${e.note ? `<div>${e.note}</div>` : ""}
-
-        ${e.intensity ? `<div>Intensidad: ${e.intensity}</div>` : ""}
-        ${e.body?.length ? `<div>Cuerpo: ${e.body.join(", ")}</div>` : ""}
-
-        ${e.sleepMood ? `<div>Sueño: ${e.sleepMood}</div>` : ""}
-        ${e.sleepHours ? `<div>Horas: ${e.sleepHours}</div>` : ""}
-        ${e.sleepChecks?.length ? `<div>${e.sleepChecks.join(", ")}</div>` : ""}
-
-        ${e.habits?.length ? `<div>Hábitos: ${e.habits.join(", ")}</div>` : ""}
-
-        <small>${e.author ?? ""}</small>
-      `;
-
-      section.appendChild(div);
-    });
-
-    entriesList.appendChild(section);
-  });
-
-  return;
-}
-
-    // USER NORMAL
     snap.forEach(d => {
       const e = d.data();
 
@@ -414,16 +396,11 @@ if (isPro) {
 
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
-       <div>
-  <strong>
-    ${e.mood || e.sleepMood || e.habitsEmoji || e.type || "📓 Entrada"}
-  </strong>
-</div>
+        <div><strong>${e.mood || e.sleepMood || e.habitsEmoji || e.type}</strong></div>
 
         ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
         ${e.good ? `<div>✨ ${e.good}</div>` : ""}
         ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-        ${e.note ? `<div>${e.note}</div>` : ""}
 
         <small>${e.author ?? ""}</small>
       `;
@@ -432,88 +409,4 @@ if (isPro) {
     });
 
   });
-});
-
-// ---------------- GLOBAL ----------------
-
-window.deleteEntry = async (id) => {
-  await deleteDoc(doc(db, "entries", id));
-};
-
-window.editEntry = async (id, oldText) => {
-  const newText = prompt("Editar:", oldText);
-  if (!newText) return;
-
-  await updateDoc(doc(db, "entries", id), {
-    text: newText
-  });
-};
-
-let lastScrollTop = 0;
-let scrollTimeout;
-
-const appContent = document.getElementById("appContent");
-const footer = document.querySelector(".appFooter");
-
-appContent?.addEventListener("scroll", () => {
-  const scrollTop = appContent.scrollTop;
-
-  if (!footer) return;
-
-  // scroll hacia abajo → ocultar
-  if (scrollTop > lastScrollTop) {
-    footer.classList.add("hide");
-  }
-
-  // scroll hacia arriba → mostrar
-  if (scrollTop < lastScrollTop) {
-    footer.classList.remove("hide");
-  }
-
-  lastScrollTop = scrollTop;
-
-  // 🔥 seguridad: si paras de hacer scroll, reaparece
-  clearTimeout(scrollTimeout);
-  scrollTimeout = setTimeout(() => {
-    footer.classList.remove("hide");
-  }, 1200);
-});
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/journal/sw.js")
-    .then(() => console.log("SW registrado OK"))
-    .catch(err => console.error("Error SW:", err));
-}
-
-let deferredPrompt;
-
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-
-  console.log("PWA instalable detectada");
-});
-
-// opcional: botón manual
-window.installApp = async () => {
-  if (!deferredPrompt) return;
-
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-
-  console.log("Resultado instalación:", outcome);
-  deferredPrompt = null;
-};
-
-window.addEventListener("load", () => {
-  const splash = document.getElementById("splash");
-
-  setTimeout(() => {
-    splash.style.opacity = "0";
-    splash.style.transition = "0.5s";
-
-    setTimeout(() => {
-      splash.remove();
-    }, 500);
-  }, 800);
 });
