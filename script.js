@@ -172,21 +172,32 @@ $("backHome4")?.addEventListener("click", () => show("home"));
 // ---------------- SAVE DIARY ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
-  const text = $("entry")?.value?.trim();
+
+  const moodText = $("entryMood")?.value?.trim();
+  const good = $("entryGood")?.value?.trim();
+  const hard = $("entryHard")?.value?.trim();
   const mood = $("moodSelect")?.value;
 
-  if (!text || !currentUser) return;
+  if (!currentUser) return;
 
-await addDoc(collection(db, "entries"), {
-  type: "diary",
-  mood,
-  moodText: $("entryMood")?.value,
-  good: $("entryGood")?.value,
-  hard: $("entryHard")?.value,
-  uid: currentUser.uid,
-  author: currentUser.email,
-  createdAt: serverTimestamp()
+  // opcional: evita entradas totalmente vacías
+  if (!moodText && !good && !hard) return;
+
+  await addDoc(collection(db, "entries"), {
+    type: "diary",
+    mood,
+    moodText,
+    good,
+    hard,
+    uid: currentUser.uid,
+    author: currentUser.email,
+    createdAt: serverTimestamp()
   });
+
+  // limpiar campos
+  $("entryMood").value = "";
+  $("entryGood").value = "";
+  $("entryHard").value = "";
 });
 
 // ---------------- SAVE EMOTION ----------------
