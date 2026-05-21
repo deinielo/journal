@@ -14,7 +14,8 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  getDoc
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
@@ -44,6 +45,7 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let isPro = false;
 let unsub = null;
+let unsubCounter = null;
 
 // ---------------- UI ----------------
 
@@ -61,8 +63,6 @@ const screens = {
 
 const entriesList = $("entriesList");
 
-
-
 // ---------------- DATE ----------------
 
 function formatDate(ts) {
@@ -76,39 +76,6 @@ function formatDate(ts) {
 function show(name) {
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
   screens[name]?.classList.remove("hidden");
-}
-
-// ---------------- NAV EVENTS ----------------
-
-const navMap = {
-  navHome: "home",
-  navDiary: "diary",
-  navFeed: "feed",
-  navEmotion: "emotion",
-  navSleep: "sleep",
-  navHabits: "habits"
-};
-
-for (const [btnId, screen] of Object.entries(navMap)) {
-  $(btnId)?.addEventListener("click", () => {
-    show(screen);
-    if (screen === "habits") updateHabitProgress();
-  });
-}
-
-// ---------------- HABITS ----------------
-
-function updateHabitProgress() {
-  const inputs = document.querySelectorAll("#habits input");
-  const checked = document.querySelectorAll("#habits input:checked");
-
-  const percent = inputs.length ? (checked.length / inputs.length) * 100 : 0;
-
-  const fill = document.getElementById("habitProgressFill");
-  const text = document.getElementById("habitProgressText");
-
-  if (fill) fill.style.width = percent + "%";
-  if (text) text.textContent = `${checked.length}/${inputs.length}`;
 }
 
 // ---------------- AUTH ----------------
@@ -131,39 +98,6 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-// ---------------- ACTIVE BUTTONS ----------------
-
-function setActive(group) {
-  document.querySelectorAll(group).forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(group).forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-    });
-  });
-}
-
-setActive(".moodBtn");
-setActive(".intensityBtn");
-setActive(".sleepMoodBtn");
-setActive(".sleepHoursBtn");
-
-// ---------------- NAV HOME ----------------
-
-$("goDiary")?.addEventListener("click", () => show("diary"));
-$("goEmotion")?.addEventListener("click", () => show("emotion"));
-$("goSleep")?.addEventListener("click", () => show("sleep"));
-$("goHabits")?.addEventListener("click", () => {
-  show("habits");
-  updateHabitProgress();
-});
-$("goFeed")?.addEventListener("click", () => show("feed"));
-
-$("backHomeFeed")?.addEventListener("click", () => show("home"));
-$("backHome1")?.addEventListener("click", () => show("home"));
-$("backHome2")?.addEventListener("click", () => show("home"));
-$("backHome3")?.addEventListener("click", () => show("home"));
-$("backHome4")?.addEventListener("click", () => show("home"));
-
 // ---------------- SAVE DIARY ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
@@ -174,7 +108,6 @@ $("btnSave")?.addEventListener("click", async () => {
   const mood = $("moodSelect")?.value;
 
   if (!currentUser) return;
-
   if (!moodText && !good && !hard) return;
 
   await addDoc(collection(db, "entries"), {
@@ -191,88 +124,6 @@ $("btnSave")?.addEventListener("click", async () => {
   $("entryMood").value = "";
   $("entryGood").value = "";
   $("entryHard").value = "";
-
-  show("home"); // 👈 AQUÍ dentro
-});
-
-// ---------------- SAVE EMOTION ----------------
-
-$("saveEmotion")?.addEventListener("click", async () => {
-  if (!currentUser) return;
-
-  const activeMood = document.querySelector(".moodBtn.active");
-
-  const mood = activeMood
-    ? activeMood.querySelector(".emoji")?.textContent + " " +
-      activeMood.querySelector(".label")?.textContent
-    : "";
-
-  const intensity = document.querySelector(".intensityBtn.active")?.dataset.level || "";
-  const body = Array.from(document.querySelectorAll("#emotion input:checked")).map(i => i.value);
-  const note = $("bodyNote")?.value || "";
-
-  await addDoc(collection(db, "entries"), {
-    type: "emotion",
-    mood,
-    intensity,
-    body,
-    note,
-    uid: currentUser.uid,
-    author: currentUser.email,
-    createdAt: serverTimestamp()
-  });
-
-  show("home");
-});
-
-// ---------------- SAVE SLEEP ----------------
-
-$("saveSleep")?.addEventListener("click", async () => {
-  if (!currentUser) return;
-
-  const activeSleep = document.querySelector(".sleepMoodBtn.active");
-
-  const mood = activeSleep
-    ? activeSleep.querySelector(".emoji")?.textContent + " " +
-      activeSleep.querySelector(".label")?.textContent
-    : "";
-
-  const hours = document.querySelector(".sleepHoursBtn.active")?.dataset.hours || "";
-  const checks = Array.from(document.querySelectorAll("#sleep input:checked")).map(i => i.value);
-  const note = $("sleepNote")?.value || "";
-
-await addDoc(collection(db, "entries"), {
-  type: "sleep",
-  sleepMood: mood,
-  sleepMoodEmoji: activeSleep?.querySelector(".emoji")?.textContent || "",
-  sleepHours: hours,
-  sleepChecks: checks,
-  sleepNote: note,
-  uid: currentUser.uid,
-  author: currentUser.email,
-  createdAt: serverTimestamp()
-});
-
-  show("home");
-});
-
-// ---------------- SAVE HABITS ----------------
-
-$("saveHabits")?.addEventListener("click", async () => {
-  if (!currentUser) return;
-
-  const habits = Array.from(document.querySelectorAll("#habits input:checked")).map(i => i.value);
-  const note = $("habitsNote")?.value || "";
-
-await addDoc(collection(db, "entries"), {
-  type: "habits",
-  habits,
-  habitsEmoji: "🧠", // o el emoji que uses en UI (ver nota abajo)
-  note,
-  uid: currentUser.uid,
-  author: currentUser.email,
-  createdAt: serverTimestamp()
-});
 
   show("home");
 });
@@ -291,46 +142,45 @@ onAuthStateChanged(auth, async (user) => {
   show("home");
 
   const userRef = doc(db, "users", user.uid);
-const snap = await getDoc(userRef);
+  const snap = await getDoc(userRef);
 
-if (!snap.exists()) {
-  await setDoc(userRef, {
-    email: user.email,
-    role: "user",
-    provider: user.providerData[0]?.providerId || "password",
-    createdAt: serverTimestamp()
-  });
-}
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      role: "user",
+      createdAt: serverTimestamp()
+    });
+  }
 
   let role = "user";
 
-  try {
-    const snap = await getDoc(doc(db, "users", user.uid));
-    role = snap.exists() ? snap.data().role : "user";
-  } catch {}
+  const roleSnap = await getDoc(userRef);
+  if (roleSnap.exists()) role = roleSnap.data().role;
 
   isPro = role === "pro";
 
-  const counterRef = isPro
-  ? collection(db, "entries")
-  : query(collection(db, "entries"), where("uid", "==", user.uid));
+  // ---------------- CONTADOR (SOLO UNO) ----------------
 
-onSnapshot(counterRef, (snapshot) => {
-  const el = $("contador-registros");
-  if (el) el.textContent = snapshot.size;
-});
+  if (unsubCounter) unsubCounter();
+
+  const counterRef = isPro
+    ? collection(db, "entries")
+    : query(collection(db, "entries"), where("uid", "==", user.uid));
+
+  unsubCounter = onSnapshot(counterRef, (snapshot) => {
+    const el = $("contador-registros");
+    if (el) el.textContent = snapshot.size;
+  });
+
+  // ---------------- ENTRADAS ----------------
 
   if (unsub) unsub();
 
-const baseQuery = collection(db, "entries");
+  const baseQuery = collection(db, "entries");
 
-const ref = isPro
-  ? query(baseQuery, orderBy("createdAt", "desc"))
-  : query(
-      baseQuery,
-      where("uid", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+  const ref = isPro
+    ? query(baseQuery, orderBy("createdAt", "desc"))
+    : query(baseQuery, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
   unsub = onSnapshot(ref, (snap) => {
 
@@ -343,84 +193,60 @@ const ref = isPro
       return;
     }
 
-// ---------------- CONTADOR ----------------
+    // ---------------- PRO ----------------
+    if (isPro) {
 
-onSnapshot(collection(db, "entries"), (snapshot) => {
-  const el = $("contador-registros");
-  if (el) el.textContent = snapshot.size;
-});
+      const grouped = {};
 
-    // ---------------- FIX IMPORTANTE: AGRUPAR POR USUARIO ----------------
+      snap.forEach(d => {
+        const e = { id: d.id, ...d.data() };
 
-// ---------------- PRO VIEW (AGRUPADO BIEN) ----------------
+        const key = e.author || e.uid || "Desconocido";
 
-if (isPro) {
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(e);
+      });
 
-  const grouped = {};
+      entriesList.innerHTML = "";
 
-  snap.forEach(d => {
-    const e = { id: d.id, ...d.data() };
+      Object.entries(grouped).forEach(([user, items]) => {
 
-    const key = e.author || e.uid || "Desconocido";
+        const section = document.createElement("div");
+        section.className = "patientGroup";
+        section.innerHTML = `<h3>👤 ${user}</h3>`;
 
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(e);
-  });
+        items.forEach(e => {
 
-  entriesList.innerHTML = "";
+          const div = document.createElement("div");
+          div.className = "entry";
 
-  Object.entries(grouped).forEach(([user, items]) => {
+          div.innerHTML = `
+            <div class="date">📅 ${formatDate(e.createdAt)}</div>
 
-    const section = document.createElement("div");
-    section.className = "patientGroup";
+            <div><strong>${e.mood || e.type || "Entrada"}</strong></div>
 
-    section.innerHTML = `<h3>👤 ${user}</h3>`;
+            ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+            ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+            ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
 
-    items.forEach(e => {
+            <small>${e.author ?? ""}</small>
 
-      const div = document.createElement("div");
-      div.className = "entry";
+            <div class="entryActions">
+              <button onclick="editEntry('${e.id}')">✏️</button>
+              <button onclick="deleteEntry('${e.id}')">🗑️</button>
+            </div>
+          `;
 
-      div.innerHTML = `
-        <div class="date">📅 ${formatDate(e.createdAt)}</div>
+          section.appendChild(div);
+        });
 
-        <div>
-          <strong>${e.mood || e.sleepMood || e.habitsEmoji || e.type || "Entrada"}</strong>
-        </div>
+        entriesList.appendChild(section);
+      });
 
-        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
-        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
-        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-        ${e.note ? `<div>${e.note}</div>` : ""}
+      return;
+    }
 
-        ${e.intensity ? `<div>Intensidad: ${e.intensity}</div>` : ""}
-        ${e.body?.length ? `<div>Cuerpo: ${e.body.join(", ")}</div>` : ""}
-
-        ${e.sleepMood ? `<div>Sueño: ${e.sleepMood}</div>` : ""}
-        ${e.sleepHours ? `<div>Horas: ${e.sleepHours}</div>` : ""}
-        ${e.sleepChecks?.length ? `<div>${e.sleepChecks.join(", ")}</div>` : ""}
-
-        ${e.habits?.length ? `<div>Hábitos: ${e.habits.join(", ")}</div>` : ""}
-
-        <small>${e.author ?? ""}</small>
-
-        <!-- 🔥 BOTONES -->
-        <div class="entryActions">
-          <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️ Editar</button>
-          <button onclick="deleteEntry('${e.id}')">🗑️ Borrar</button>
-        </div>
-      `;
-
-      section.appendChild(div);
-    });
-
-    entriesList.appendChild(section);
-  });
-
-  return;
-}
-
-    // USER NORMAL
+    // ---------------- USER ----------------
     snap.forEach(d => {
       const e = d.data();
 
@@ -429,16 +255,11 @@ if (isPro) {
 
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
-       <div>
-  <strong>
-    ${e.mood || e.sleepMood || e.habitsEmoji || e.type || "📓 Entrada"}
-  </strong>
-</div>
+        <div><strong>${e.mood || e.type || "Entrada"}</strong></div>
 
         ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
         ${e.good ? `<div>✨ ${e.good}</div>` : ""}
         ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-        ${e.note ? `<div>${e.note}</div>` : ""}
 
         <small>${e.author ?? ""}</small>
       `;
@@ -449,86 +270,17 @@ if (isPro) {
   });
 });
 
-// ---------------- GLOBAL ----------------
+// ---------------- GLOBAL ACTIONS ----------------
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
-window.editEntry = async (id, oldText) => {
-  const newText = prompt("Editar:", oldText);
+window.editEntry = async (id) => {
+  const newText = prompt("Editar texto:");
   if (!newText) return;
 
   await updateDoc(doc(db, "entries", id), {
-    text: newText
+    moodText: newText
   });
 };
-
-let lastScrollTop = 0;
-let scrollTimeout;
-
-const appContent = document.getElementById("appContent");
-const footer = document.querySelector(".appFooter");
-
-appContent?.addEventListener("scroll", () => {
-  const scrollTop = appContent.scrollTop;
-
-  if (!footer) return;
-
-  // scroll hacia abajo → ocultar
-  if (scrollTop > lastScrollTop) {
-    footer.classList.add("hide");
-  }
-
-  // scroll hacia arriba → mostrar
-  if (scrollTop < lastScrollTop) {
-    footer.classList.remove("hide");
-  }
-
-  lastScrollTop = scrollTop;
-
-  // 🔥 seguridad: si paras de hacer scroll, reaparece
-  clearTimeout(scrollTimeout);
-  scrollTimeout = setTimeout(() => {
-    footer.classList.remove("hide");
-  }, 1200);
-});
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/journal/sw.js")
-    .then(() => console.log("SW registrado OK"))
-    .catch(err => console.error("Error SW:", err));
-}
-
-let deferredPrompt;
-
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-
-  console.log("PWA instalable detectada");
-});
-
-// opcional: botón manual
-window.installApp = async () => {
-  if (!deferredPrompt) return;
-
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-
-  console.log("Resultado instalación:", outcome);
-  deferredPrompt = null;
-};
-
-window.addEventListener("load", () => {
-  const splash = document.getElementById("splash");
-
-  setTimeout(() => {
-    splash.style.opacity = "0";
-    splash.style.transition = "0.5s";
-
-    setTimeout(() => {
-      splash.remove();
-    }, 500);
-  }, 800);
-});
