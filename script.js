@@ -180,7 +180,6 @@ $("btnSave")?.addEventListener("click", async () => {
 
   if (!currentUser) return;
 
-  // opcional: evita entradas totalmente vacías
   if (!moodText && !good && !hard) return;
 
   await addDoc(collection(db, "entries"), {
@@ -194,12 +193,12 @@ $("btnSave")?.addEventListener("click", async () => {
     createdAt: serverTimestamp()
   });
 
-  // limpiar campos
   $("entryMood").value = "";
   $("entryGood").value = "";
   $("entryHard").value = "";
+
+  show("home"); // 👈 AQUÍ dentro
 });
-  show("home");
 
 // ---------------- SAVE EMOTION ----------------
 
