@@ -63,7 +63,7 @@ const entriesList = $("entriesList");
 
 // ---------------- CONTADOR ----------------
 
-onSnapshot(collection(db, "entries"), (snapshot) => {
+onSnapshot(ref, (snapshot) => {
   const el = $("contador-registros");
   if (el) el.textContent = snapshot.size;
 });
