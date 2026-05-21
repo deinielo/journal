@@ -464,7 +464,7 @@ window.editEntry = async (id, oldText) => {
   if (!newText) return;
 
   await updateDoc(doc(db, "entries", id), {
-    text: newText
+    moodText: newText
   });
 };
 
