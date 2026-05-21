@@ -299,7 +299,7 @@ onAuthStateChanged(auth, async (user) => {
   const ref = isPro
     ? query(collection(db, "entries"))
     : query(collection(db, "entries"),
-  where("uid", "==", user.uid),);
+  where("uid", "==", user.uid));
 
   unsub = onSnapshot(ref, (snap) => {
 
