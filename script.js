@@ -368,7 +368,9 @@ if (isPro) {
           <strong>${e.mood || e.sleepMood || e.habitsEmoji || e.type || "Entrada"}</strong>
         </div>
 
-        ${e.text ? `<div>${e.text}</div>` : ""}
+        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
         ${e.note ? `<div>${e.note}</div>` : ""}
 
         ${e.intensity ? `<div>Intensidad: ${e.intensity}</div>` : ""}
@@ -407,7 +409,9 @@ if (isPro) {
   </strong>
 </div>
 
-        ${e.text ? `<div>${e.text}</div>` : ""}
+        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
         ${e.note ? `<div>${e.note}</div>` : ""}
 
         <small>${e.author ?? ""}</small>
