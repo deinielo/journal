@@ -359,16 +359,14 @@ if (isPro) {
   const grouped = {};
 
   snap.forEach(d => {
-    const e = d.data();
+    const e = { id: d.id, ...d.data() };
 
-    // clave de usuario estable
     const key = e.author || e.uid || "Desconocido";
 
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(e);
   });
 
-  // 🔥 IMPORTANTE: limpiar antes de pintar (evita duplicados raros)
   entriesList.innerHTML = "";
 
   Object.entries(grouped).forEach(([user, items]) => {
@@ -405,6 +403,12 @@ if (isPro) {
         ${e.habits?.length ? `<div>Hábitos: ${e.habits.join(", ")}</div>` : ""}
 
         <small>${e.author ?? ""}</small>
+
+        <!-- 🔥 BOTONES -->
+        <div class="entryActions">
+          <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️ Editar</button>
+          <button onclick="deleteEntry('${e.id}')">🗑️ Borrar</button>
+        </div>
       `;
 
       section.appendChild(div);
