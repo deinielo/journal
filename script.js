@@ -421,32 +421,36 @@ if (isPro) {
 }
 
     // USER NORMAL
-    snap.forEach(d => {
-      const e = d.data();
+snap.forEach(d => {
+  const e = { id: d.id, ...d.data() };
 
-      const div = document.createElement("div");
-      div.className = "entry";
+  const div = document.createElement("div");
+  div.className = "entry";
 
-      div.innerHTML = `
-        <div class="date">📅 ${formatDate(e.createdAt)}</div>
-       <div>
-  <strong>
-    ${e.mood || e.sleepMood || e.habitsEmoji || e.type || "📓 Entrada"}
-  </strong>
-</div>
+  div.innerHTML = `
+    <div class="date">📅 ${formatDate(e.createdAt)}</div>
 
-        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
-        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
-        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-        ${e.note ? `<div>${e.note}</div>` : ""}
+    <div>
+      <strong>
+        ${e.mood || e.sleepMood || e.habitsEmoji || e.type || "📓 Entrada"}
+      </strong>
+    </div>
 
-        <small>${e.author ?? ""}</small>
-      `;
+    ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+    ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+    ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+    ${e.note ? `<div>${e.note}</div>` : ""}
 
-      entriesList.appendChild(div);
-    });
+    <small>${e.author ?? ""}</small>
 
-  });
+    <!-- 🔥 BOTONES -->
+    <div class="entryActions">
+      <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️ Editar</button>
+      <button onclick="deleteEntry('${e.id}')">🗑️ Borrar</button>
+    </div>
+  `;
+
+  entriesList.appendChild(div);
 });
 
 // ---------------- GLOBAL ----------------
