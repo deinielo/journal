@@ -31,7 +31,7 @@ import {
 // ---------------- FIREBASE ----------------
 
 const app = initializeApp({
-  apiKey: "AIzaSyANvBWfE15OZD4yQmPL8nnCPQQzj5a44WU",
+  apiKey: "AIzaSyANvBWfE15OZD4eYQmPL8nnCPQQzj5a44WU",
   authDomain: "mi-diario-online.firebaseapp.com",
   projectId: "mi-diario-online",
 });
@@ -45,7 +45,7 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let isPro = false;
 let unsub = null;
-let unsubCounter = null;
+let unsubCounter = null; // 🔥 FIX IMPORTANTE
 
 // ---------------- UI ----------------
 
@@ -310,7 +310,7 @@ onAuthStateChanged(auth, async (user) => {
 
   isPro = role === "pro";
 
-  // ---------------- CONTADOR (FIX) ----------------
+  // ---------------- CONTADOR (FIX ÚNICO) ----------------
 
   if (unsubCounter) unsubCounter();
 
