@@ -343,7 +343,12 @@ const ref = isPro
       return;
     }
 
+// ---------------- CONTADOR ----------------
 
+onSnapshot(collection(db, "entries"), (snapshot) => {
+  const el = $("contador-registros");
+  if (el) el.textContent = snapshot.size;
+});
 
     // ---------------- FIX IMPORTANTE: AGRUPAR POR USUARIO ----------------
 
