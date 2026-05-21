@@ -285,6 +285,18 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
+  const userRef = doc(db, "users", user.uid);
+const snap = await getDoc(userRef);
+
+if (!snap.exists()) {
+  await setDoc(userRef, {
+    email: user.email,
+    role: "user",
+    provider: user.providerData[0]?.providerId || "password",
+    createdAt: serverTimestamp()
+  });
+}
+
   let role = "user";
 
   try {
