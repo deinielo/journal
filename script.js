@@ -177,17 +177,16 @@ $("btnSave")?.addEventListener("click", async () => {
 
   if (!text || !currentUser) return;
 
-  await addDoc(collection(db, "entries"), {
-    type: "diary",
-    text,
-    mood,
-    uid: currentUser.uid,
-    author: currentUser.email,
-    createdAt: serverTimestamp()
+await addDoc(collection(db, "entries"), {
+  type: "diary",
+  mood,
+  moodText: $("entryMood")?.value,
+  good: $("entryGood")?.value,
+  hard: $("entryHard")?.value,
+  uid: currentUser.uid,
+  author: currentUser.email,
+  createdAt: serverTimestamp()
   });
-
-  $("entry").value = "";
-  show("home");
 });
 
 // ---------------- SAVE EMOTION ----------------
