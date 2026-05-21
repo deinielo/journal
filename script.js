@@ -430,11 +430,7 @@ snap.forEach(d => {
   div.innerHTML = `
     <div class="date">📅 ${formatDate(e.createdAt)}</div>
 
-    <div>
-      <strong>
-        ${e.mood || e.sleepMood || e.habitsEmoji || e.type || "📓 Entrada"}
-      </strong>
-    </div>
+    <div><strong>${e.mood || e.type}</strong></div>
 
     ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
     ${e.good ? `<div>✨ ${e.good}</div>` : ""}
@@ -443,12 +439,25 @@ snap.forEach(d => {
 
     <small>${e.author ?? ""}</small>
 
-    <!-- 🔥 BOTONES -->
     <div class="entryActions">
-      <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️ Editar</button>
-      <button onclick="deleteEntry('${e.id}')">🗑️ Borrar</button>
+      <button class="editBtn">✏️ Editar</button>
+      <button class="deleteBtn">🗑️ Borrar</button>
     </div>
   `;
+
+  // 🔥 EVENTOS SEGUROS
+  div.querySelector(".deleteBtn").addEventListener("click", async () => {
+    await deleteEntry(e.id);
+  });
+
+  div.querySelector(".editBtn").addEventListener("click", async () => {
+    const newText = prompt("Editar:", e.moodText || "");
+    if (!newText) return;
+
+    await updateDoc(doc(db, "entries", e.id), {
+      moodText: newText
+    });
+  });
 
   entriesList.appendChild(div);
 });
