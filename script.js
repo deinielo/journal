@@ -187,7 +187,7 @@ console.log("AUTH INIT");
 
   const ref = isPro
     ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+    query(base, where("uid", "==", user.uid))
 
   unsub = onSnapshot(ref, (snap) => {
 
