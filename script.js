@@ -28,6 +28,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
+
 // ---------------- FIREBASE ----------------
 
 const app = initializeApp({
@@ -40,12 +41,14 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+
 // ---------------- STATE ----------------
 
 let currentUser = null;
 let isPro = false;
 let unsubEntries = null;
 let unsubCounter = null;
+
 
 // ---------------- UI ----------------
 
@@ -63,6 +66,7 @@ const screens = {
 
 const entriesList = $("entriesList");
 
+
 // ---------------- HELPERS ----------------
 
 function formatDate(ts) {
@@ -79,6 +83,7 @@ function show(name) {
   screens[name]?.classList.remove("hidden");
 }
 
+
 // ---------------- NAV ----------------
 
 $("goDiary")?.addEventListener("click", () => show("diary"));
@@ -87,18 +92,19 @@ $("goSleep")?.addEventListener("click", () => show("sleep"));
 $("goHabits")?.addEventListener("click", () => show("habits"));
 $("goFeed")?.addEventListener("click", () => show("feed"));
 
-document.getElementById("navHome")?.addEventListener("click", () => show("home"));
-document.getElementById("navDiary")?.addEventListener("click", () => show("diary"));
-document.getElementById("navFeed")?.addEventListener("click", () => show("feed"));
-document.getElementById("navEmotion")?.addEventListener("click", () => show("emotion"));
-document.getElementById("navSleep")?.addEventListener("click", () => show("sleep"));
-document.getElementById("navHabits")?.addEventListener("click", () => show("habits"));
+$("navHome")?.addEventListener("click", () => show("home"));
+$("navDiary")?.addEventListener("click", () => show("diary"));
+$("navFeed")?.addEventListener("click", () => show("feed"));
+$("navEmotion")?.addEventListener("click", () => show("emotion"));
+$("navSleep")?.addEventListener("click", () => show("sleep"));
+$("navHabits")?.addEventListener("click", () => show("habits"));
 
 $("backHome1")?.addEventListener("click", () => show("home"));
 $("backHome2")?.addEventListener("click", () => show("home"));
 $("backHome3")?.addEventListener("click", () => show("home"));
 $("backHome4")?.addEventListener("click", () => show("home"));
 $("backHomeFeed")?.addEventListener("click", () => show("home"));
+
 
 // ---------------- AUTH ----------------
 
@@ -120,6 +126,7 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
+
 // ---------------- SAVE ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
@@ -136,8 +143,13 @@ $("btnSave")?.addEventListener("click", async () => {
     createdAt: serverTimestamp()
   });
 
+  $("entryMood").value = "";
+  $("entryGood").value = "";
+  $("entryHard").value = "";
+
   show("home");
 });
+
 
 // ---------------- AUTH STATE ----------------
 
@@ -163,7 +175,9 @@ onAuthStateChanged(auth, async (user) => {
     });
   }
 
-  isPro = (await getDoc(userRef)).data()?.role === "pro";
+  const roleSnap = await getDoc(userRef);
+  isPro = roleSnap.data()?.role === "pro";
+
 
   // ---------------- COUNTER ----------------
 
@@ -174,23 +188,26 @@ onAuthStateChanged(auth, async (user) => {
     : query(collection(db, "entries"), where("uid", "==", user.uid));
 
   unsubCounter = onSnapshot(counterQ, (snap) => {
-    $("contador-registros").textContent = snap.size;
+    const el = $("contador-registros");
+    if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES (FIX FINAL) ----------------
+
+  // ---------------- ENTRIES (FIX FINAL PRO + USER) ----------------
 
   if (unsubEntries) unsubEntries();
 
   const base = collection(db, "entries");
 
-  // 🔥 FIX IMPORTANTE: quitamos orderBy en user view para evitar bloqueo Firestore
-  const entriesQ = isPro
-    ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid));
+  let entriesQ;
+
+  if (isPro) {
+    entriesQ = query(base, orderBy("createdAt", "desc"));
+  } else {
+    entriesQ = query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+  }
 
   unsubEntries = onSnapshot(entriesQ, (snap) => {
-
-    console.log("ENTRADAS CARGADAS:", snap.size);
 
     if (!entriesList) return;
 
@@ -201,6 +218,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
+    // ---------------- PRO VIEW ----------------
     if (isPro) {
 
       const grouped = {};
@@ -232,7 +250,7 @@ onAuthStateChanged(auth, async (user) => {
             ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
 
             <div class="entryActions">
-              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g,"\\'")}')">✏️</button>
+              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
               <button onclick="deleteEntry('${e.id}')">🗑️</button>
             </div>
           `;
@@ -246,7 +264,9 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
+    // ---------------- USER VIEW ----------------
     snap.forEach(d => {
+
       const e = d.data();
 
       const div = document.createElement("div");
@@ -266,14 +286,15 @@ onAuthStateChanged(auth, async (user) => {
   });
 });
 
-// ---------------- ACTIONS ----------------
+
+// ---------------- GLOBAL ACTIONS ----------------
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
 window.editEntry = async (id, oldText) => {
-  const t = prompt("Editar:", oldText);
+  const t = prompt("Editar texto:", oldText);
   if (!t) return;
 
   await updateDoc(doc(db, "entries", id), {
