@@ -28,7 +28,6 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-
 // ---------------- FIREBASE ----------------
 
 const app = initializeApp({
@@ -41,14 +40,12 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-
 // ---------------- STATE ----------------
 
 let currentUser = null;
 let isPro = false;
-let unsub = null;
+let unsubEntries = null;
 let unsubCounter = null;
-
 
 // ---------------- UI ----------------
 
@@ -66,13 +63,11 @@ const screens = {
 
 const entriesList = $("entriesList");
 
-
 // ---------------- HELPERS ----------------
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleString("es-ES");
+  return ts.toDate().toLocaleString("es-ES");
 }
 
 function show(name) {
@@ -80,11 +75,24 @@ function show(name) {
   screens[name]?.classList.remove("hidden");
 }
 
+// ---------------- NAV ----------------
+
+$("goDiary")?.addEventListener("click", () => show("diary"));
+$("goEmotion")?.addEventListener("click", () => show("emotion"));
+$("goSleep")?.addEventListener("click", () => show("sleep"));
+$("goHabits")?.addEventListener("click", () => show("habits"));
+$("goFeed")?.addEventListener("click", () => show("feed"));
+
+$("backHome1")?.addEventListener("click", () => show("home"));
+$("backHome2")?.addEventListener("click", () => show("home"));
+$("backHome3")?.addEventListener("click", () => show("home"));
+$("backHome4")?.addEventListener("click", () => show("home"));
+$("backHomeFeed")?.addEventListener("click", () => show("home"));
 
 // ---------------- AUTH ----------------
 
 $("btnGoogle")?.addEventListener("click", () => {
-  signInWithPopup(auth, provider).catch(console.error);
+  signInWithPopup(auth, provider);
 });
 
 $("btnEmail")?.addEventListener("click", async () => {
@@ -101,11 +109,9 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-
 // ---------------- SAVE DIARY ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
-
   if (!currentUser) return;
 
   const moodText = $("entryMood")?.value?.trim();
@@ -126,20 +132,12 @@ $("btnSave")?.addEventListener("click", async () => {
     createdAt: serverTimestamp()
   });
 
-  $("entryMood").value = "";
-  $("entryGood").value = "";
-  $("entryHard").value = "";
-
   show("home");
 });
-
 
 // ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
-
-console.log("AUTH INIT");
-  
   currentUser = user;
 
   if (!user) {
@@ -149,7 +147,7 @@ console.log("AUTH INIT");
 
   show("home");
 
-  // USER DOC
+  // USER ROLE
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -162,34 +160,31 @@ console.log("AUTH INIT");
   }
 
   const roleSnap = await getDoc(userRef);
-  isPro = roleSnap.exists() && roleSnap.data().role === "pro";
-
+  isPro = roleSnap.data()?.role === "pro";
 
   // ---------------- COUNTER ----------------
 
   if (unsubCounter) unsubCounter();
 
-  const counterRef = isPro
+  const counterQuery = isPro
     ? collection(db, "entries")
     : query(collection(db, "entries"), where("uid", "==", user.uid));
 
-  unsubCounter = onSnapshot(counterRef, (snapshot) => {
-    const el = $("contador-registros");
-    if (el) el.textContent = snapshot.size;
+  unsubCounter = onSnapshot(counterQuery, (snap) => {
+    $("contador-registros").textContent = snap.size;
   });
-
 
   // ---------------- ENTRIES ----------------
 
-  if (unsub) unsub();
+  if (unsubEntries) unsubEntries();
 
   const base = collection(db, "entries");
 
-  const ref = isPro
+  const q = isPro
     ? query(base, orderBy("createdAt", "desc"))
-    query(base, where("uid", "==", user.uid))
+    : query(base, where("uid", "==", user.uid));
 
-  unsub = onSnapshot(ref, (snap) => {
+  unsubEntries = onSnapshot(q, (snap) => {
 
     if (!entriesList) return;
 
@@ -200,8 +195,6 @@ console.log("AUTH INIT");
       return;
     }
 
-
-    // ---------------- PRO VIEW ----------------
     if (isPro) {
 
       const grouped = {};
@@ -228,16 +221,16 @@ console.log("AUTH INIT");
           div.innerHTML = `
             <div class="date">📅 ${formatDate(e.createdAt)}</div>
 
-            <div><strong>${e.mood || e.type || "Entrada"}</strong></div>
+            <div><strong>${e.mood || "Entrada"}</strong></div>
 
             ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
             ${e.good ? `<div>✨ ${e.good}</div>` : ""}
             ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
 
-            <small>${e.author ?? ""}</small>
+            <small>${e.author}</small>
 
             <div class="entryActions">
-              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
+              <button onclick="editEntry('${e.id}')">✏️</button>
               <button onclick="deleteEntry('${e.id}')">🗑️</button>
             </div>
           `;
@@ -251,8 +244,7 @@ console.log("AUTH INIT");
       return;
     }
 
-
-    // ---------------- USER VIEW ----------------
+    // USER VIEW
     snap.forEach(d => {
 
       const e = d.data();
@@ -262,13 +254,11 @@ console.log("AUTH INIT");
 
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood || e.type || "Entrada"}</strong></div>
+        <div><strong>${e.mood || "Entrada"}</strong></div>
 
         ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
         ${e.good ? `<div>✨ ${e.good}</div>` : ""}
         ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-
-        <small>${e.author ?? ""}</small>
       `;
 
       entriesList.appendChild(div);
@@ -277,15 +267,14 @@ console.log("AUTH INIT");
   });
 });
 
-
 // ---------------- GLOBAL ACTIONS ----------------
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
-window.editEntry = async (id, oldText) => {
-  const newText = prompt("Editar:", oldText);
+window.editEntry = async (id) => {
+  const newText = prompt("Editar texto:");
   if (!newText) return;
 
   await updateDoc(doc(db, "entries", id), {
