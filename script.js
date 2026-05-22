@@ -138,6 +138,8 @@ $("btnSave")?.addEventListener("click", async () => {
 
 onAuthStateChanged(auth, async (user) => {
 
+console.log("AUTH INIT");
+  
   currentUser = user;
 
   if (!user) {
