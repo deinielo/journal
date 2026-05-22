@@ -159,7 +159,6 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  // USER DOC
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -187,15 +186,20 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES ----------------
+  // ---------------- ENTRIES (FIX REAL) ----------------
 
   if (unsubEntries) unsubEntries();
 
   const base = collection(db, "entries");
 
-  const entriesQuery = isPro
-    ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+  let entriesQuery;
+
+  if (isPro) {
+    entriesQuery = query(base, orderBy("createdAt", "desc"));
+  } else {
+    // 🔥 IMPORTANTE: sin orderBy para evitar bloqueo de Firestore
+    entriesQuery = query(base, where("uid", "==", user.uid));
+  }
 
   unsubEntries = onSnapshot(entriesQuery, (snap) => {
 
@@ -208,6 +212,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
+    // ---------------- PRO VIEW ----------------
     if (isPro) {
 
       const grouped = {};
@@ -249,7 +254,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    // USER VIEW
+    // ---------------- USER VIEW ----------------
     snap.forEach(d => {
 
       const e = d.data();
