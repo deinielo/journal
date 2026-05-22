@@ -272,6 +272,22 @@ onAuthStateChanged(auth, async (user) => {
 
 // ---------------- GLOBAL ACTIONS ----------------
 
+document.addEventListener("click", (e) => {
+
+  if (e.target.id === "goDiary") {
+    show("diary");
+  }
+
+  if (e.target.id === "goEmotion") {
+    show("emotion");
+  }
+
+  if (e.target.id === "btnSave") {
+    saveDiary();
+  }
+
+});
+
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
