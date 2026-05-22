@@ -83,6 +83,13 @@ $("goSleep")?.addEventListener("click", () => show("sleep"));
 $("goHabits")?.addEventListener("click", () => show("habits"));
 $("goFeed")?.addEventListener("click", () => show("feed"));
 
+document.getElementById("navHome")?.addEventListener("click", () => show("home"));
+document.getElementById("navDiary")?.addEventListener("click", () => show("diary"));
+document.getElementById("navFeed")?.addEventListener("click", () => show("feed"));
+document.getElementById("navEmotion")?.addEventListener("click", () => show("emotion"));
+document.getElementById("navSleep")?.addEventListener("click", () => show("sleep"));
+document.getElementById("navHabits")?.addEventListener("click", () => show("habits"));
+
 $("backHome1")?.addEventListener("click", () => show("home"));
 $("backHome2")?.addEventListener("click", () => show("home"));
 $("backHome3")?.addEventListener("click", () => show("home"));
@@ -184,7 +191,8 @@ onAuthStateChanged(auth, async (user) => {
     ? query(base, orderBy("createdAt", "desc"))
     : query(base, where("uid", "==", user.uid));
 
-  unsubEntries = onSnapshot(q, (snap) => {
+  unsub = onSnapshot(ref, (snap) => {
+  console.log("ENTRADAS:", snap.size);
 
     if (!entriesList) return;
 
