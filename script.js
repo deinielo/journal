@@ -67,7 +67,11 @@ const entriesList = $("entriesList");
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
-  return ts.toDate().toLocaleString("es-ES");
+  try {
+    return ts.toDate().toLocaleString("es-ES");
+  } catch {
+    return "Fecha inválida";
+  }
 }
 
 function show(name) {
@@ -116,32 +120,21 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-// ---------------- SAVE DIARY ----------------
+// ---------------- SAVE ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
   if (!currentUser) return;
 
-  const moodText = $("entryMood")?.value?.trim();
-  const good = $("entryGood")?.value?.trim();
-  const hard = $("entryHard")?.value?.trim();
-  const mood = $("moodSelect")?.value;
-
-  if (!moodText && !good && !hard) return;
-
   await addDoc(collection(db, "entries"), {
     type: "diary",
-    mood,
-    moodText,
-    good,
-    hard,
+    mood: $("moodSelect")?.value,
+    moodText: $("entryMood")?.value?.trim(),
+    good: $("entryGood")?.value?.trim(),
+    hard: $("entryHard")?.value?.trim(),
     uid: currentUser.uid,
     author: currentUser.email,
     createdAt: serverTimestamp()
   });
-
-  $("entryMood").value = "";
-  $("entryGood").value = "";
-  $("entryHard").value = "";
 
   show("home");
 });
@@ -170,33 +163,34 @@ onAuthStateChanged(auth, async (user) => {
     });
   }
 
-  const roleSnap = await getDoc(userRef);
-  isPro = roleSnap.data()?.role === "pro";
+  isPro = (await getDoc(userRef)).data()?.role === "pro";
 
   // ---------------- COUNTER ----------------
 
   if (unsubCounter) unsubCounter();
 
-  const counterQuery = isPro
+  const counterQ = isPro
     ? collection(db, "entries")
     : query(collection(db, "entries"), where("uid", "==", user.uid));
 
-  unsubCounter = onSnapshot(counterQuery, (snap) => {
-    const el = $("contador-registros");
-    if (el) el.textContent = snap.size;
+  unsubCounter = onSnapshot(counterQ, (snap) => {
+    $("contador-registros").textContent = snap.size;
   });
 
-  // ---------------- ENTRIES ----------------
+  // ---------------- ENTRIES (FIX FINAL) ----------------
 
   if (unsubEntries) unsubEntries();
 
   const base = collection(db, "entries");
 
-  const entriesQuery = isPro
+  // 🔥 FIX IMPORTANTE: quitamos orderBy en user view para evitar bloqueo Firestore
+  const entriesQ = isPro
     ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+    : query(base, where("uid", "==", user.uid));
 
-  unsubEntries = onSnapshot(entriesQuery, (snap) => {
+  unsubEntries = onSnapshot(entriesQ, (snap) => {
+
+    console.log("ENTRADAS CARGADAS:", snap.size);
 
     if (!entriesList) return;
 
@@ -207,7 +201,6 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    // ---------------- PRO VIEW ----------------
     if (isPro) {
 
       const grouped = {};
@@ -238,10 +231,8 @@ onAuthStateChanged(auth, async (user) => {
             ${e.good ? `<div>✨ ${e.good}</div>` : ""}
             ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
 
-            <small>${e.author || ""}</small>
-
             <div class="entryActions">
-              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
+              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g,"\\'")}')">✏️</button>
               <button onclick="deleteEntry('${e.id}')">🗑️</button>
             </div>
           `;
@@ -255,9 +246,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    // ---------------- USER VIEW ----------------
     snap.forEach(d => {
-
       const e = d.data();
 
       const div = document.createElement("div");
@@ -277,17 +266,17 @@ onAuthStateChanged(auth, async (user) => {
   });
 });
 
-// ---------------- GLOBAL ACTIONS ----------------
+// ---------------- ACTIONS ----------------
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
 window.editEntry = async (id, oldText) => {
-  const newText = prompt("Editar:", oldText);
-  if (!newText) return;
+  const t = prompt("Editar:", oldText);
+  if (!t) return;
 
   await updateDoc(doc(db, "entries", id), {
-    moodText: newText
+    moodText: t
   });
 };
