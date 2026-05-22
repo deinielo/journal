@@ -28,6 +28,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
+
 // ---------------- FIREBASE ----------------
 
 const app = initializeApp({
@@ -40,12 +41,14 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+
 // ---------------- STATE ----------------
 
 let currentUser = null;
 let isPro = false;
 let unsub = null;
 let unsubCounter = null;
+
 
 // ---------------- UI ----------------
 
@@ -63,7 +66,8 @@ const screens = {
 
 const entriesList = $("entriesList");
 
-// ---------------- DATE ----------------
+
+// ---------------- HELPERS ----------------
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
@@ -71,12 +75,11 @@ function formatDate(ts) {
   return d.toLocaleString("es-ES");
 }
 
-// ---------------- NAV ----------------
-
 function show(name) {
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
   screens[name]?.classList.remove("hidden");
 }
+
 
 // ---------------- AUTH ----------------
 
@@ -98,16 +101,18 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
+
 // ---------------- SAVE DIARY ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
+
+  if (!currentUser) return;
 
   const moodText = $("entryMood")?.value?.trim();
   const good = $("entryGood")?.value?.trim();
   const hard = $("entryHard")?.value?.trim();
   const mood = $("moodSelect")?.value;
 
-  if (!currentUser) return;
   if (!moodText && !good && !hard) return;
 
   await addDoc(collection(db, "entries"), {
@@ -128,6 +133,7 @@ $("btnSave")?.addEventListener("click", async () => {
   show("home");
 });
 
+
 // ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
@@ -141,6 +147,7 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
+  // USER DOC
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -152,14 +159,11 @@ onAuthStateChanged(auth, async (user) => {
     });
   }
 
-  let role = "user";
-
   const roleSnap = await getDoc(userRef);
-  if (roleSnap.exists()) role = roleSnap.data().role;
+  isPro = roleSnap.exists() && roleSnap.data().role === "pro";
 
-  isPro = role === "pro";
 
-  // ---------------- CONTADOR (SOLO UNO) ----------------
+  // ---------------- COUNTER ----------------
 
   if (unsubCounter) unsubCounter();
 
@@ -172,15 +176,16 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snapshot.size;
   });
 
-  // ---------------- ENTRADAS ----------------
+
+  // ---------------- ENTRIES ----------------
 
   if (unsub) unsub();
 
-  const baseQuery = collection(db, "entries");
+  const base = collection(db, "entries");
 
   const ref = isPro
-    ? query(baseQuery, orderBy("createdAt", "desc"))
-    : query(baseQuery, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+    ? query(base, orderBy("createdAt", "desc"))
+    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
   unsub = onSnapshot(ref, (snap) => {
 
@@ -193,21 +198,19 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    // ---------------- PRO ----------------
+
+    // ---------------- PRO VIEW ----------------
     if (isPro) {
 
       const grouped = {};
 
       snap.forEach(d => {
         const e = { id: d.id, ...d.data() };
-
-        const key = e.author || e.uid || "Desconocido";
+        const key = e.author || "Desconocido";
 
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(e);
       });
-
-      entriesList.innerHTML = "";
 
       Object.entries(grouped).forEach(([user, items]) => {
 
@@ -232,7 +235,7 @@ onAuthStateChanged(auth, async (user) => {
             <small>${e.author ?? ""}</small>
 
             <div class="entryActions">
-              <button onclick="editEntry('${e.id}')">✏️</button>
+              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
               <button onclick="deleteEntry('${e.id}')">🗑️</button>
             </div>
           `;
@@ -246,8 +249,10 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    // ---------------- USER ----------------
+
+    // ---------------- USER VIEW ----------------
     snap.forEach(d => {
+
       const e = d.data();
 
       const div = document.createElement("div");
@@ -270,30 +275,15 @@ onAuthStateChanged(auth, async (user) => {
   });
 });
 
+
 // ---------------- GLOBAL ACTIONS ----------------
-
-document.addEventListener("click", (e) => {
-
-  if (e.target.id === "goDiary") {
-    show("diary");
-  }
-
-  if (e.target.id === "goEmotion") {
-    show("emotion");
-  }
-
-  if (e.target.id === "btnSave") {
-    saveDiary();
-  }
-
-});
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
-window.editEntry = async (id) => {
-  const newText = prompt("Editar texto:");
+window.editEntry = async (id, oldText) => {
+  const newText = prompt("Editar:", oldText);
   if (!newText) return;
 
   await updateDoc(doc(db, "entries", id), {
