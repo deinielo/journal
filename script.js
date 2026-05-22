@@ -139,12 +139,17 @@ $("btnSave")?.addEventListener("click", async () => {
     createdAt: serverTimestamp()
   });
 
+  $("entryMood").value = "";
+  $("entryGood").value = "";
+  $("entryHard").value = "";
+
   show("home");
 });
 
 // ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
+
   currentUser = user;
 
   if (!user) {
@@ -154,7 +159,7 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  // USER ROLE
+  // USER DOC
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -178,7 +183,8 @@ onAuthStateChanged(auth, async (user) => {
     : query(collection(db, "entries"), where("uid", "==", user.uid));
 
   unsubCounter = onSnapshot(counterQuery, (snap) => {
-    $("contador-registros").textContent = snap.size;
+    const el = $("contador-registros");
+    if (el) el.textContent = snap.size;
   });
 
   // ---------------- ENTRIES ----------------
@@ -187,12 +193,11 @@ onAuthStateChanged(auth, async (user) => {
 
   const base = collection(db, "entries");
 
-  const q = isPro
+  const entriesQuery = isPro
     ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid));
+    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
-  unsub = onSnapshot(ref, (snap) => {
-  console.log("ENTRADAS:", snap.size);
+  unsubEntries = onSnapshot(entriesQuery, (snap) => {
 
     if (!entriesList) return;
 
@@ -228,19 +233,11 @@ onAuthStateChanged(auth, async (user) => {
 
           div.innerHTML = `
             <div class="date">📅 ${formatDate(e.createdAt)}</div>
-
             <div><strong>${e.mood || "Entrada"}</strong></div>
-
             ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
             ${e.good ? `<div>✨ ${e.good}</div>` : ""}
             ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-
-            <small>${e.author}</small>
-
-            <div class="entryActions">
-              <button onclick="editEntry('${e.id}')">✏️</button>
-              <button onclick="deleteEntry('${e.id}')">🗑️</button>
-            </div>
+            <small>${e.author || ""}</small>
           `;
 
           section.appendChild(div);
@@ -263,7 +260,6 @@ onAuthStateChanged(auth, async (user) => {
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
         <div><strong>${e.mood || "Entrada"}</strong></div>
-
         ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
         ${e.good ? `<div>✨ ${e.good}</div>` : ""}
         ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
