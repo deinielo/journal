@@ -67,7 +67,11 @@ const entriesList = $("entriesList");
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
-  return ts.toDate().toLocaleString("es-ES");
+  try {
+    return ts.toDate().toLocaleString("es-ES");
+  } catch {
+    return "Sin fecha";
+  }
 }
 
 function show(name) {
@@ -159,6 +163,7 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
+  // USER DOC
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -186,7 +191,7 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES (FIX REAL) ----------------
+  // ---------------- ENTRIES (STABLE FIX) ----------------
 
   if (unsubEntries) unsubEntries();
 
@@ -197,7 +202,6 @@ onAuthStateChanged(auth, async (user) => {
   if (isPro) {
     entriesQuery = query(base, orderBy("createdAt", "desc"));
   } else {
-    // 🔥 IMPORTANTE: sin orderBy para evitar bloqueo de Firestore
     entriesQuery = query(base, where("uid", "==", user.uid));
   }
 
