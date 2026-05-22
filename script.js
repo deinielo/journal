@@ -67,11 +67,7 @@ const entriesList = $("entriesList");
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
-  try {
-    return ts.toDate().toLocaleString("es-ES");
-  } catch {
-    return "Sin fecha";
-  }
+  return ts.toDate().toLocaleString("es-ES");
 }
 
 function show(name) {
@@ -163,7 +159,6 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  // USER DOC
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -191,19 +186,15 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES (STABLE FIX) ----------------
+  // ---------------- ENTRIES ----------------
 
   if (unsubEntries) unsubEntries();
 
   const base = collection(db, "entries");
 
-  let entriesQuery;
-
-  if (isPro) {
-    entriesQuery = query(base, orderBy("createdAt", "desc"));
-  } else {
-    entriesQuery = query(base, where("uid", "==", user.uid));
-  }
+  const entriesQuery = isPro
+    ? query(base, orderBy("createdAt", "desc"))
+    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
   unsubEntries = onSnapshot(entriesQuery, (snap) => {
 
@@ -246,7 +237,13 @@ onAuthStateChanged(auth, async (user) => {
             ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
             ${e.good ? `<div>✨ ${e.good}</div>` : ""}
             ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+
             <small>${e.author || ""}</small>
+
+            <div class="entryActions">
+              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
+              <button onclick="deleteEntry('${e.id}')">🗑️</button>
+            </div>
           `;
 
           section.appendChild(div);
@@ -286,8 +283,8 @@ window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
-window.editEntry = async (id) => {
-  const newText = prompt("Editar texto:");
+window.editEntry = async (id, oldText) => {
+  const newText = prompt("Editar:", oldText);
   if (!newText) return;
 
   await updateDoc(doc(db, "entries", id), {
