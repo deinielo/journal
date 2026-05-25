@@ -1,7 +1,10 @@
 console.log("JS OK");
+
 window.addEventListener("DOMContentLoaded", () => {
   console.log("DOM listo");
 });
+
+// ---------------- FIREBASE ----------------
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
@@ -31,7 +34,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-// ---------------- FIREBASE ----------------
+// ---------------- INIT ----------------
 
 const app = initializeApp({
   apiKey: "AIzaSyANvBWfE15OZD4yQmPL8nnCPQQzj5a44WU",
@@ -55,9 +58,17 @@ let unsubPatientEntries = null;
 
 let selectedPatientUid = null;
 
-// ---------------- UI ----------------
+// ---------------- SAFE SELECTOR ----------------
 
-const $ = (id) => document.getElementById(id);
+const $ = (id) => {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.warn(`⚠️ Elemento faltante en DOM: #${id}`);
+  }
+  return el;
+};
+
+// ---------------- SCREENS ----------------
 
 const screens = {
   auth: $("auth"),
@@ -71,11 +82,32 @@ const screens = {
   patientDetail: $("patientDetail"),
 };
 
+// ---------------- ELEMENTS ----------------
+
 const entriesList = $("entriesList");
 const patientsList = $("patientsList");
-const patientEntriesList = document.getElementById("patientEntriesList");
+const patientEntriesList = $("patientEntriesList");
 
-// ---------------- HELPERS ----------------
+// ---------------- SAFE SHOW ----------------
+
+function show(name) {
+  Object.entries(screens).forEach(([key, screen]) => {
+    if (!screen) {
+      console.warn(`❌ Pantalla no existe en HTML: ${key}`);
+      return;
+    }
+    screen.classList.add("hidden");
+  });
+
+  if (!screens[name]) {
+    console.error(`❌ Intento de abrir pantalla inexistente: ${name}`);
+    return;
+  }
+
+  screens[name].classList.remove("hidden");
+}
+
+// ---------------- FORMAT ----------------
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
@@ -86,27 +118,25 @@ function formatDate(ts) {
   }
 }
 
-function show(name) {
-  Object.values(screens).forEach(s => {
-    if (s) s.classList.add("hidden");
-  });
-
-  if (screens[name]) {
-    screens[name].classList.remove("hidden");
-  } else {
-    console.warn("Pantalla no existe:", name);
-  }
-}
-
-// ---------------- PATIENT VIEW ----------------
+// ---------------- PATIENT VIEW SAFE ----------------
 
 function openPatient(uid) {
+  if (!uid) {
+    console.error("❌ openPatient sin UID");
+    return;
+  }
+
   selectedPatientUid = uid;
   show("patientDetail");
   loadPatientEntries(uid);
 }
 
 function loadPatientEntries(uid) {
+
+  if (!patientEntriesList) {
+    console.error("❌ Falta patientEntriesList en HTML");
+    return;
+  }
 
   if (unsubPatientEntries) unsubPatientEntries();
 
@@ -118,15 +148,10 @@ function loadPatientEntries(uid) {
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
 
-    if (!patientEntriesList) return;
-if (!patientEntriesList) {
-  console.error("❌ patientEntriesList no existe en el DOM");
-  return;
-}
-patientEntriesList.innerHTML = "";
+    patientEntriesList.innerHTML = "";
 
     if (snap.empty) {
-      patientEntriesList.innerHTML = "<p>Este paciente no tiene entradas</p>";
+      patientEntriesList.innerHTML = "<p>No hay entradas</p>";
       return;
     }
 
@@ -144,13 +169,15 @@ patientEntriesList.innerHTML = "";
 
       patientEntriesList.appendChild(div);
     });
+  }, (error) => {
+    console.error("❌ Error en loadPatientEntries:", error);
   });
 }
 
 // ---------------- AUTH ----------------
 
 $("btnGoogle")?.addEventListener("click", () => {
-  signInWithPopup(auth, provider);
+  signInWithPopup(auth, provider).catch(err => console.error(err));
 });
 
 $("btnEmail")?.addEventListener("click", async () => {
@@ -160,33 +187,38 @@ $("btnEmail")?.addEventListener("click", async () => {
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-  } catch {
+  } catch (e) {
     await createUserWithEmailAndPassword(auth, email, pass);
   }
 });
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-// ---------------- SAVE ----------------
+// ---------------- SAVE SAFE ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
   if (!currentUser) return;
 
-await addDoc(collection(db, "entries"), {
-  type: "diary",
-  mood: $("moodSelect")?.value,
-  moodText: $("entryMood")?.value?.trim(),
-  good: $("entryGood")?.value?.trim(),
-  hard: $("entryHard")?.value?.trim(),
-  uid: currentUser.uid,
-  author: currentUser.email,
-  createdAt: serverTimestamp()
+  try {
+    await addDoc(collection(db, "entries"), {
+      type: "diary",
+      mood: $("moodSelect")?.value || "",
+      moodText: $("entryMood")?.value?.trim() || "",
+      good: $("entryGood")?.value?.trim() || "",
+      hard: $("entryHard")?.value?.trim() || "",
+      uid: currentUser.uid,
+      author: currentUser.email,
+      createdAt: serverTimestamp()
+    });
+
+    show("home");
+
+  } catch (e) {
+    console.error("❌ Error guardando entrada:", e);
+  }
 });
 
-  show("home");
-});
-
-// ---------------- AUTH STATE ----------------
+// ---------------- AUTH STATE SAFE ----------------
 
 onAuthStateChanged(auth, async (user) => {
 
@@ -199,121 +231,65 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
 
-  if (!snap.exists()) {
-await setDoc(userRef, {
-  uid: user.uid,
-  email: user.email,
-  role: "user",
-  professionalId: null,
-  createdAt: serverTimestamp()
-});
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        role: "user",
+        professionalId: null,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    const roleData = (await getDoc(userRef)).data();
+    isPro = roleData?.role === "pro";
+
+  } catch (e) {
+    console.error("❌ Error user init:", e);
   }
 
-  const roleData = (await getDoc(userRef)).data();
-  isPro = roleData?.role === "pro";
+  // ---------------- ENTRIES SAFE ----------------
 
-  $("navProfessional")?.classList.toggle("hidden", !isPro);
+  if (unsubEntries) unsubEntries();
 
-  // ---------------- PATIENTS ----------------
+  if (!entriesList) {
+    console.warn("⚠️ entriesList no existe");
+  } else {
 
-  if (unsubPatients) unsubPatients();
+    const entriesQ = isPro
+      ? query(collection(db, "entries"), orderBy("createdAt", "desc"))
+      : query(collection(db, "entries"), where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
-  if (isPro && patientsList) {
+    unsubEntries = onSnapshot(entriesQ, (snap) => {
 
-    const q = query(
-      collection(db, "users"),
-      where("professionalId", "==", user.uid)
-    );
-
-    unsubPatients = onSnapshot(q, (snap) => {
-
-      patientsList.innerHTML = "";
+      entriesList.innerHTML = "";
 
       if (snap.empty) {
-        patientsList.innerHTML = "<p>No tienes pacientes</p>";
+        entriesList.innerHTML = "<p>No hay entradas</p>";
         return;
       }
 
       snap.forEach(docSnap => {
-        const data = docSnap.data();
+        const e = docSnap.data();
 
         const div = document.createElement("div");
-        div.className = "patientItem";
+        div.className = "entry";
 
         div.innerHTML = `
-          <div class="patientEmail">👤 ${data.email}</div>
-          <div class="patientHint">Toca para ver entradas</div>
+          <div class="date">📅 ${formatDate(e.createdAt)}</div>
+          <div><strong>${e.mood || "Entrada"}</strong></div>
+          <div>🧠 ${e.text || e.moodText || ""}</div>
         `;
 
-        div.onclick = () => openPatient(data.uid);
-
-        patientsList.appendChild(div);
+        entriesList.appendChild(div);
       });
+
+    }, (err) => {
+      console.error("❌ Error entries:", err);
     });
   }
-
-  // ---------------- COUNTER ----------------
-
-  if (unsubCounter) unsubCounter();
-
-  const counterQ = isPro
-    ? collection(db, "entries")
-    : query(collection(db, "entries"), where("uid", "==", user.uid));
-
-  unsubCounter = onSnapshot(counterQ, (snap) => {
-    const el = $("contador-registros");
-    if (el) el.textContent = snap.size;
-  });
-
-  // ---------------- ENTRIES (FIX REAL) ----------------
-
-  if (unsubEntries) unsubEntries();
-
-  const entriesQ = isPro
-    ? query(collection(db, "entries"), orderBy("createdAt", "desc"))
-    : query(collection(db, "entries"), where("uid", "==", user.uid), orderBy("createdAt", "desc"));
-
-  unsubEntries = onSnapshot(entriesQ, (snap) => {
-
-    entriesList.innerHTML = "";
-
-    if (snap.empty) {
-      entriesList.innerHTML = "<p>No hay entradas</p>";
-      return;
-    }
-
-    snap.forEach(docSnap => {
-      const e = docSnap.data();
-
-      const div = document.createElement("div");
-      div.className = "entry";
-
-      div.innerHTML = `
-        <div class="date">📅 ${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood || "Entrada"}</strong></div>
-        <div>🧠 ${e.text || e.moodText || ""}</div>
-      `;
-
-      entriesList.appendChild(div);
-    });
-  });
-
 });
-
-// ---------------- ACTIONS ----------------
-
-window.deleteEntry = async (id) => {
-  await deleteDoc(doc(db, "entries", id));
-};
-
-window.editEntry = async (id) => {
-  const t = prompt("Editar texto:");
-  if (!t) return;
-
-  await updateDoc(doc(db, "entries", id), {
-    moodText: t
-  });
-};
