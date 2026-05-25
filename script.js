@@ -168,7 +168,26 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  if (isPro && patientsList) {
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      role: "user",
+      createdAt: serverTimestamp()
+    });
+  }
+
+  const roleSnap = await getDoc(userRef);
+  isPro = roleSnap.data()?.role === "pro";
+  if (isPro) {
+  $("navProfessional")?.classList.remove("hidden");
+} else {
+  $("navProfessional")?.classList.add("hidden");
+}
+
+if (isPro && patientsList) {
 
   const usersRef = collection(db, "users");
 
@@ -192,25 +211,6 @@ onAuthStateChanged(auth, async (user) => {
       patientsList.appendChild(div);
     });
   });
-}
-
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      email: user.email,
-      role: "user",
-      createdAt: serverTimestamp()
-    });
-  }
-
-  const roleSnap = await getDoc(userRef);
-  isPro = roleSnap.data()?.role === "pro";
-  if (isPro) {
-  $("navProfessional")?.classList.remove("hidden");
-} else {
-  $("navProfessional")?.classList.add("hidden");
 }
 
 
