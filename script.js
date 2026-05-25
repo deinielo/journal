@@ -98,8 +98,6 @@ function openPatient(uid) {
 
 function loadPatientEntries(uid) {
 
-  console.log("Cargando entradas de UID:", uid);
-
   if (unsubPatientEntries) unsubPatientEntries();
 
   const q = query(
@@ -109,8 +107,6 @@ function loadPatientEntries(uid) {
   );
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
-
-    console.log("ENTRADAS ENCONTRADAS:", snap.size);
 
     patientEntriesList.innerHTML = "";
 
@@ -128,19 +124,13 @@ function loadPatientEntries(uid) {
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
         <div><strong>${e.mood || "Entrada"}</strong></div>
-        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
-        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
-        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+        <div>🧠 ${e.text || e.moodText || ""}</div>
       `;
 
       patientEntriesList.appendChild(div);
     });
   });
 }
-
-// ---------------- NAV ----------------
-
-$("backToPatients")?.addEventListener("click", () => show("professional"));
 
 // ---------------- AUTH ----------------
 
@@ -227,15 +217,12 @@ onAuthStateChanged(auth, async (user) => {
 
       patientsList.innerHTML = "";
 
-      console.log("PACIENTES:", snap.size);
-
       if (snap.empty) {
         patientsList.innerHTML = "<p>No tienes pacientes</p>";
         return;
       }
 
       snap.forEach(docSnap => {
-
         const data = docSnap.data();
 
         const div = document.createElement("div");
@@ -246,7 +233,6 @@ onAuthStateChanged(auth, async (user) => {
           <div class="patientHint">Toca para ver entradas</div>
         `;
 
-        // 🔥 FIX IMPORTANTE: usar UID REAL
         div.onclick = () => openPatient(data.uid);
 
         patientsList.appendChild(div);
@@ -267,19 +253,15 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES ----------------
+  // ---------------- ENTRIES (FIX REAL) ----------------
 
   if (unsubEntries) unsubEntries();
 
-  const base = collection(db, "entries");
-
   const entriesQ = isPro
-    ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+    ? query(collection(db, "entries"), orderBy("createdAt", "desc"))
+    : query(collection(db, "entries"), where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
   unsubEntries = onSnapshot(entriesQ, (snap) => {
-
-    if (!entriesList) return;
 
     entriesList.innerHTML = "";
 
@@ -289,7 +271,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     snap.forEach(docSnap => {
-
       const e = docSnap.data();
 
       const div = document.createElement("div");
@@ -297,13 +278,14 @@ onAuthStateChanged(auth, async (user) => {
 
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood}</strong></div>
-        <div>${e.moodText || ""}</div>
+        <div><strong>${e.mood || "Entrada"}</strong></div>
+        <div>🧠 ${e.text || e.moodText || ""}</div>
       `;
 
       entriesList.appendChild(div);
     });
   });
+
 });
 
 // ---------------- ACTIONS ----------------
@@ -312,8 +294,8 @@ window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
-window.editEntry = async (id, oldText) => {
-  const t = prompt("Editar texto:", oldText);
+window.editEntry = async (id) => {
+  const t = prompt("Editar texto:");
   if (!t) return;
 
   await updateDoc(doc(db, "entries", id), {
