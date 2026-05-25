@@ -1,571 +1,368 @@
-* {
-  box-sizing: border-box;
-}
+console.log("JS OK");
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, sans-serif;
-  background: linear-gradient(135deg, #e6f4f1, #f4f8f7, #dcefe9);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding-top: env(safe-area-inset-top);
-  background: black;
-}
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
-.app {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
-}
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  deleteDoc,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-h1 {
-  text-align: center;
-  color: #00896E;
-}
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-h2 {
-  margin-top: 10px;
-  color: #2b2b2b;
-}
+// ---------------- FIREBASE ----------------
 
-.screen {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  will-change: transform, opacity;
-}
+const app = initializeApp({
+  apiKey: "AIzaSyANvBWfE15OZD4yQmPL8nnCPQQzj5a44WU",
+  authDomain: "mi-diario-online.firebaseapp.com",
+  projectId: "mi-diario-online",
+});
 
-.hidden {
-  display: none !important;
-}
+const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-/* BOTONES */
-button {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
+// ---------------- STATE ----------------
 
-  background: #f1f1f1;
-  transition: 0.2s;
-}
+let currentUser = null;
+let isPro = false;
+let unsubEntries = null;
+let unsubCounter = null;
+let unsubPatients = null;
+let selectedPatientId = null;
+let unsubPatientEntries = null;
 
-button:hover {
-  transform: translateY(-1px);
-}
+// ---------------- UI ----------------
 
-.danger {
-  background: #ffdddd;
-}
+const $ = (id) => document.getElementById(id);
 
-/* INPUTS */
-textarea, select {
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  width: 100%;
-}
+const screens = {
+  auth: $("auth"),
+  home: $("home"),
+  diary: $("diary"),
+  emotion: $("emotion"),
+  sleep: $("sleep"),
+  habits: $("habits"),
+  feed: $("feed"),
+  professional: $("professional"),
+};
 
-textarea {
-  min-height: 120px;
-  resize: none;
-}
+const entriesList = $("entriesList");
+const patientsList = $("patientsList");
 
-/* GRID EMOCIONES */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
+// ---------------- HELPERS ----------------
 
-@media (max-width: 480px) {
-  .phone {
-    height: 100vh;
-    border-radius: 0;
-    .appFooter button span:not(.icon) {
-    font-size: 10px;
+function formatDate(ts) {
+  if (!ts) return "Sin fecha";
+  try {
+    return ts.toDate().toLocaleString("es-ES");
+  } catch {
+    return "Fecha inválida";
   }
 }
+
+function show(name) {
+  Object.values(screens).forEach(s => s?.classList.add("hidden"));
+  screens[name]?.classList.remove("hidden");
 }
 
-.moodBtn {
-  font-size: 30px;
-  background: white;
-  height: 60px;
-  transition: 0.2s;
+patientDetail: $("patientDetail"),
+
+function openPatient(uid) {
+  selectedPatientId = uid;
+  show("patientDetail")
+  loadPatientEntries(uid);
 }
 
-.moodBtn.active {
-  transform: scale(1.1);
-  background: rgba(0, 137, 110, 0.15);
-  border: 2px solid #00896E;
+function loadPatientEntries(uid) {
+
+  if (unsubPatientEntries) unsubPatientEntries();
+
+  const q = query(
+    collection(db, "entries"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc")
+  );
+
+  unsubPatientEntries = onSnapshot(q, (snap) => {
+
+    entriesList.innerHTML = "";
+
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>Este paciente no tiene entradas</p>";
+      return;
+    }
+
+    snap.forEach(d => {
+      const e = d.data();
+
+      const div = document.createElement("div");
+      div.className = "entry";
+
+      div.innerHTML = `
+        <div class="date">📅 ${e.createdAt?.toDate?.().toLocaleString("es-ES") || ""}</div>
+        <div><strong>${e.mood || "Entrada"}</strong></div>
+        <div>${e.moodText || ""}</div>
+      `;
+
+      entriesList.appendChild(div);
+    });
+  });
 }
 
-/* INTENSIDAD */
-.intensityBtn.active {
-  background: #00896E;
-  color: white;
-  transform: scale(1.1);
+// ---------------- NAV ----------------
+
+$("goDiary")?.addEventListener("click", () => show("diary"));
+$("goEmotion")?.addEventListener("click", () => show("emotion"));
+$("goSleep")?.addEventListener("click", () => show("sleep"));
+$("goHabits")?.addEventListener("click", () => show("habits"));
+$("goFeed")?.addEventListener("click", () => show("feed"));
+
+$("navHome")?.addEventListener("click", () => show("home"));
+$("navDiary")?.addEventListener("click", () => show("diary"));
+$("navFeed")?.addEventListener("click", () => show("feed"));
+$("navEmotion")?.addEventListener("click", () => show("emotion"));
+$("navSleep")?.addEventListener("click", () => show("sleep"));
+$("navHabits")?.addEventListener("click", () => show("habits"));
+$("navProfessional")?.addEventListener("click", () => show("professional"));
+
+$("backHomeProfessional")?.addEventListener("click", () => show("home"));
+
+// ---------------- AUTH ----------------
+
+$("btnGoogle")?.addEventListener("click", () => {
+  signInWithPopup(auth, provider);
+});
+
+$("btnEmail")?.addEventListener("click", async () => {
+  const email = prompt("Email");
+  const pass = prompt("Password");
+  if (!email || !pass) return;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch {
+    await createUserWithEmailAndPassword(auth, email, pass);
+  }
+});
+
+$("btnLogout")?.addEventListener("click", () => signOut(auth));
+
+// ---------------- SAVE ----------------
+
+$("btnSave")?.addEventListener("click", async () => {
+  if (!currentUser) return;
+
+  await addDoc(collection(db, "entries"), {
+    type: "diary",
+    mood: $("moodSelect")?.value,
+    moodText: $("entryMood")?.value?.trim(),
+    good: $("entryGood")?.value?.trim(),
+    hard: $("entryHard")?.value?.trim(),
+    uid: currentUser.uid,
+    author: currentUser.email,
+    createdAt: serverTimestamp()
+  });
+
+  show("home");
+});
+
+// ---------------- AUTH STATE ----------------
+
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+
+  if (!user) {
+    show("auth");
+    return;
+  }
+
+  show("home");
+
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      email: user.email,
+      role: "user",
+      createdAt: serverTimestamp()
+    });
+  }
+
+  const roleData = (await getDoc(userRef)).data();
+  isPro = roleData?.role === "pro";
+
+  $("navProfessional")?.classList.toggle("hidden", !isPro);
+
+  // ---------------- PACIENTES (PRO ONLY) ----------------
+
+if (unsubPatients) {
+  unsubPatients();
+  unsubPatients = null;
 }
 
-/* CHECKBOX */
-.check {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+if (isPro && patientsList) {
 
-  padding: 6px;
-  background: rgba(255,255,255,0.6);
-  border-radius: 10px;
+  const usersRef = collection(db, "users");
+
+  const q = query(
+    usersRef,
+    where("professionalId", "==", currentUser.uid)
+  );
+
+  unsubPatients = onSnapshot(q, (snap) => {
+
+    patientsList.innerHTML = "";
+
+    console.log("PACIENTES:", snap.size);
+
+    if (snap.empty) {
+      patientsList.innerHTML = "<p>No tienes pacientes asignados</p>";
+      return;
+    }
+
+    snap.forEach(docSnap => {
+
+      const data = docSnap.data();
+
+const div = document.createElement("div");
+div.className = "patientItem";
+
+div.innerHTML = `
+  <div class="patientEmail">👤 ${data.email || "Usuario"}</div>
+  <div class="patientHint">Toca para ver entradas</div>
+`;
+
+div.onclick = () => openPatient(docSnap.id);
+
+patientsList.appendChild(div);
+    });
+  });
 }
 
-/* ENTRADAS */
-#entriesList {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.entry {
-  background: white;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.06);
-}
-
-#intensityBox {
-  display: block;
-}
-
-.moodBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  gap: 4px;
-
-  font-size: 28px;
-}
+  // ---------------- COUNTER ----------------
 
-.moodBtn .label {
-  font-size: 12px;
-  opacity: 0.7;
-}
+  if (unsubCounter) unsubCounter();
 
-.author {
-  font-size: 12px;
-  opacity: 0.6;
-  margin-top: 4px;
-}
+  const counterQ = isPro
+    ? collection(db, "entries")
+    : query(collection(db, "entries"), where("uid", "==", user.uid));
 
-.entryActions {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
+  unsubCounter = onSnapshot(counterQ, (snap) => {
+    const el = $("contador-registros");
+    if (el) el.textContent = snap.size;
+  });
 
-.editBtn {
-  background: #e6f0ff;
-  color: #1a4fff;
-  font-weight: bold;
-}
+  // ---------------- ENTRIES ----------------
 
-.deleteBtn {
-  background: #ffe6e6;
-  color: #cc0000;
-  font-weight: bold;
-}
+  if (unsubEntries) unsubEntries();
 
-.entryActions button {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-}
+  const base = collection(db, "entries");
 
-.sleepMoodBtn.active,
-.sleepHoursBtn.active {
-  transform: scale(1.1);
-  background: rgba(0, 137, 110, 0.15);
-  border: 2px solid #00896E;
-}
+  const entriesQ = isPro
+    ? query(base, orderBy("createdAt", "desc"))
+    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
-/* ---------------- HOME BUTTONS ---------------- */
+  unsubEntries = onSnapshot(entriesQ, (snap) => {
 
-#home button:not(.danger) {
-  height: 140px;
-  aspect-ratio: 1 / 1;
-  font-size: 20px;
-  font-weight: bold;
+    if (!entriesList) return;
 
-  border-radius: 28px;
+    entriesList.innerHTML = "";
 
-  background: white;
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>No hay entradas</p>";
+      return;
+    }
 
-  border: 2px solid rgba(0,0,0,0.06);
+    if (isPro) {
+      const grouped = {};
 
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      snap.forEach((docSnap) => {
+        const e = { id: docSnap.id, ...docSnap.data() };
+        const key = e.author || "Desconocido";
 
-  transition: 0.2s;
-}
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(e);
+      });
 
-#home button:not(.danger):hover {
-  transform: translateY(-3px) scale(1.02);
+      Object.entries(grouped).forEach(([author, items]) => {
+        const section = document.createElement("div");
+        section.className = "patientGroup";
+        section.innerHTML = `<h3>👤 ${author}</h3>`;
 
-  background: #f4fffc;
+        items.forEach((e) => {
+          const div = document.createElement("div");
+          div.className = "entry";
 
-  border-color: #00a884;
-}
+          div.innerHTML = `
+            <div class="date">📅 ${formatDate(e.createdAt)}</div>
+            <div><strong>${e.mood || "Entrada"}</strong></div>
+            ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+            ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+            ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+          `;
 
-/* LOGOUT */
+          section.appendChild(div);
+        });
 
-#btnLogout {
-  margin-top: 10px;
+        entriesList.appendChild(section);
+      });
 
-  height: 55px;
+      return;
+    }
 
-  font-size: 16px;
-  font-weight: bold;
+    snap.forEach((docSnap) => {
+      const e = docSnap.data();
 
-  border-radius: 16px;
-  grid-column: 1 / -1;
-}
+      const div = document.createElement("div");
+      div.className = "entry";
 
-/* ---------------- GRID BUTTONS ---------------- */
+      div.innerHTML = `
+        <div class="date">📅 ${formatDate(e.createdAt)}</div>
+        <div><strong>${e.mood || "Entrada"}</strong></div>
+        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+      `;
 
-.moodBtn,
-.sleepMoodBtn,
-.intensityBtn,
-.sleepHoursBtn {
-  min-height: 75px;
+      entriesList.appendChild(div);
+    });
 
-  border-radius: 18px;
+  });
+});
 
-  background: white;
 
-  border: 2px solid transparent;
 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+// ---------------- ACTIONS ----------------
 
-  transition: 0.2s;
-}
+window.deleteEntry = async (id) => {
+  await deleteDoc(doc(db, "entries", id));
+};
 
-.moodBtn:hover,
-.sleepMoodBtn:hover,
-.intensityBtn:hover,
-.sleepHoursBtn:hover {
-  transform: scale(1.04);
-}
-
-/* ACTIVE */
-
-.moodBtn.active,
-.sleepMoodBtn.active,
-.intensityBtn.active,
-.sleepHoursBtn.active {
-  border-color: #00896E;
-  background: rgba(0, 137, 110, 0.12);
-
-  transform: scale(1.05);
-}
-
-/* EMOJIS MÁS GRANDES */
-
-.moodBtn .emoji,
-.sleepMoodBtn .emoji {
-  font-size: 34px;
-}
-
-/* LABELS */
-
-.moodBtn .label,
-.sleepMoodBtn .label {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* CHECKBOX CARDS */
-
-.check {
-  padding: 12px;
-
-  border-radius: 14px;
-
-  background: white;
-
-  border: 1px solid rgba(0,0,0,0.05);
-
-  transition: 0.2s;
-}
-
-.check:hover {
-  transform: translateX(3px);
-  background: #f7fffc;
-}
-
-#home {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.progressBar {
-  width: 100%;
-  height: 14px;
-  background: #636d61;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-top: 10px;
-}
-
-#habitProgressFill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #00ff99, #00b3ff);
-  transition: width 0.3s ease;
-}
-
-.appFooter {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-
-  height: 60px;
-  background: #111;
-  border-top: 1px solid #333;
-
-  z-index: 1000;
-
-  transform: translateY(0);
-  transition: transform 0.25s ease, opacity 0.25s ease;
-
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.appFooter.hide {
-  transform: translateY(100%);
-  opacity: 0;
-}
-
-.appFooter button {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 10px;
-}
-
-.appFooter button:active {
-  transform: scale(0.9);
-}
-
-.phone {
-  width: 100%;
-  max-width: 420px;
-  height: 90vh;
-  background: #e6e6e6;
-  border-radius: 30px;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  display: flex;
-  flex-direction: column;
-}
-
-#appContent {
-  flex: 1;
-  overflow-y: auto;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
-}
-
-.appFooter button {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 11px;
-  color: white;
-  padding: 4px 0;
-
-  gap: 2px;
-  min-width: 0;
-}
-
-
-.appFooter button:hover {
-  color: white;
-  transform: scale(1.15);
-}
-
-#contador-registros {
-  font-size: 28px;
-  font-weight: 800;
-  color: #00896E;
-}
-
-/* efecto cuando cambia el número */  
-#contador-registros:active {
-  transform: scale(1.05);
-}
-
-#contador-wrapper {
-  grid-column: 1 / -1;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  padding: 18px;
-  border-radius: 18px;
-
-  background: white;
-  border: 2px solid rgba(0,0,0,0.06);
-
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-
-  font-weight: bold;
-}
-
-#contador-wrapper small {
-  font-size: 11px;
-  color: rgba(255,255,255,0.7);
-  letter-spacing: 1px;
-}
-
-#contador-label {
-  font-size: 20px;
-  opacity: 0.7;
-  font-weight: 500;
-}
-
-.patientGroup {
-  margin-bottom: 20px;
-  padding: 10px;
-  border-radius: 16px;
-  background: rgba(255,255,255,0.6);
-  border: 1px solid rgba(0,0,0,0.08);
-}
-
-.patientTitle {
-  font-size: 14px;
-  opacity: 0.7;
-  margin-bottom: 10px;
-}
-
-.appFooter button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  gap: 3px;
-
-  min-width: 60px;
-}
-
-.appFooter .icon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.appFooter .label {
-  font-size: 10px;
-  font-weight: 600;
-
-  opacity: 0.75;
-}
-
-.appFooter button.active {
-  color: #00c896;
-}
-
-.appFooter button.active .icon {
-  transform: scale(1.15);
-}
-
-.appFooter span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#splash {
-  position: fixed;
-  inset: 0;
-  background: #111;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  color: white;
-  z-index: 9999;
-}
-
-.loader {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #333;
-  border-top: 4px solid #00ff99;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-button, .moodBtn, .sleepMoodBtn, .intensityBtn, .sleepHoursBtn {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-button:active,
-.moodBtn:active,
-.sleepMoodBtn:active,
-.intensityBtn:active,
-.sleepHoursBtn:active {
-  transform: scale(0.96);
-  transition: transform 0.08s ease;
-}
-
-.patientItem {
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  background: #1f1f1f;
-  color: white;
-  cursor: pointer;
-  transition: 0.2s;
-  border: 1px solid transparent;
-}
-
-.patientItem:hover {
-  transform: scale(1.02);
-  border: 1px solid #4caf50;
-  background: #2a2a2a;
-}
-
-.patientEmail {
-  font-weight: bold;
-}
-
-.patientHint {
-  font-size: 12px;
-  opacity: 0.6;
-  margin-top: 4px;
-}
+window.editEntry = async (id, oldText) => {
+  const t = prompt("Editar texto:", oldText);
+  if (!t) return;
+
+  await updateDoc(doc(db, "entries", id), {
+    moodText: t
+  });
+};
