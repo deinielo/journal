@@ -1,11 +1,5 @@
 console.log("JS OK");
 
-window.addEventListener("DOMContentLoaded", () => {
-  console.log("DOM listo");
-});
-
-// ---------------- FIREBASE ----------------
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
 import {
@@ -34,7 +28,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-// ---------------- INIT ----------------
+// ---------------- FIREBASE ----------------
 
 const app = initializeApp({
   apiKey: "AIzaSyANvBWfE15OZD4yQmPL8nnCPQQzj5a44WU",
@@ -46,27 +40,22 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// ---------------- SAFE GET ----------------
+
+const $ = (id) => {
+  const el = document.getElementById(id);
+  if (!el) console.warn("⚠️ Falta elemento HTML:", id);
+  return el;
+};
+
 // ---------------- STATE ----------------
 
 let currentUser = null;
 let isPro = false;
 
 let unsubEntries = null;
-let unsubCounter = null;
 let unsubPatients = null;
 let unsubPatientEntries = null;
-
-let selectedPatientUid = null;
-
-// ---------------- SAFE SELECTOR ----------------
-
-const $ = (id) => {
-  const el = document.getElementById(id);
-  if (!el) {
-    console.warn(`⚠️ Elemento faltante en DOM: #${id}`);
-  }
-  return el;
-};
 
 // ---------------- SCREENS ----------------
 
@@ -77,7 +66,6 @@ const screens = {
   emotion: $("emotion"),
   sleep: $("sleep"),
   habits: $("habits"),
-  feed: $("feed"),
   professional: $("professional"),
   patientDetail: $("patientDetail"),
 };
@@ -88,26 +76,7 @@ const entriesList = $("entriesList");
 const patientsList = $("patientsList");
 const patientEntriesList = $("patientEntriesList");
 
-// ---------------- SAFE SHOW ----------------
-
-function show(name) {
-  Object.entries(screens).forEach(([key, screen]) => {
-    if (!screen) {
-      console.warn(`❌ Pantalla no existe en HTML: ${key}`);
-      return;
-    }
-    screen.classList.add("hidden");
-  });
-
-  if (!screens[name]) {
-    console.error(`❌ Intento de abrir pantalla inexistente: ${name}`);
-    return;
-  }
-
-  screens[name].classList.remove("hidden");
-}
-
-// ---------------- FORMAT ----------------
+// ---------------- HELPERS ----------------
 
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
@@ -118,35 +87,34 @@ function formatDate(ts) {
   }
 }
 
-// ---------------- PATIENT VIEW SAFE ----------------
+function show(name) {
+  Object.values(screens).forEach(s => s?.classList.add("hidden"));
+  screens[name]?.classList.remove("hidden");
+}
+
+// ---------------- PATIENT VIEW ----------------
 
 function openPatient(uid) {
-  if (!uid) {
-    console.error("❌ openPatient sin UID");
-    return;
-  }
-
-  selectedPatientUid = uid;
   show("patientDetail");
   loadPatientEntries(uid);
 }
 
 function loadPatientEntries(uid) {
 
-  if (!patientEntriesList) {
-    console.error("❌ Falta patientEntriesList en HTML");
-    return;
-  }
+  console.log("📥 Cargando entradas UID:", uid);
 
   if (unsubPatientEntries) unsubPatientEntries();
 
   const q = query(
     collection(db, "entries"),
-    where("uid", "==", uid),
-    orderBy("createdAt", "desc")
+    where("uid", "==", uid)
   );
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
+
+    console.log("📊 Entradas paciente:", snap.size);
+
+    if (!patientEntriesList) return;
 
     patientEntriesList.innerHTML = "";
 
@@ -163,21 +131,31 @@ function loadPatientEntries(uid) {
 
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood || "Entrada"}</strong></div>
-        <div>🧠 ${e.text || e.moodText || ""}</div>
+        <div><strong>${e.mood || ""}</strong></div>
+        <div>${e.text || e.moodText || ""}</div>
       `;
 
       patientEntriesList.appendChild(div);
     });
-  }, (error) => {
-    console.error("❌ Error en loadPatientEntries:", error);
   });
 }
+
+// ---------------- NAV ----------------
+
+$("backToPatients")?.addEventListener("click", () => show("professional"));
+
+$("goDiary")?.addEventListener("click", () => show("diary"));
+$("goEmotion")?.addEventListener("click", () => show("emotion"));
+$("goSleep")?.addEventListener("click", () => show("sleep"));
+$("goHabits")?.addEventListener("click", () => show("habits"));
+$("goFeed")?.addEventListener("click", () => {
+  console.log("⚠️ No existe pantalla FEED en HTML");
+});
 
 // ---------------- AUTH ----------------
 
 $("btnGoogle")?.addEventListener("click", () => {
-  signInWithPopup(auth, provider).catch(err => console.error(err));
+  signInWithPopup(auth, provider);
 });
 
 $("btnEmail")?.addEventListener("click", async () => {
@@ -187,38 +165,33 @@ $("btnEmail")?.addEventListener("click", async () => {
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-  } catch (e) {
+  } catch {
     await createUserWithEmailAndPassword(auth, email, pass);
   }
 });
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-// ---------------- SAVE SAFE ----------------
+// ---------------- SAVE DIARY ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
   if (!currentUser) return;
 
-  try {
-    await addDoc(collection(db, "entries"), {
-      type: "diary",
-      mood: $("moodSelect")?.value || "",
-      moodText: $("entryMood")?.value?.trim() || "",
-      good: $("entryGood")?.value?.trim() || "",
-      hard: $("entryHard")?.value?.trim() || "",
-      uid: currentUser.uid,
-      author: currentUser.email,
-      createdAt: serverTimestamp()
-    });
+  await addDoc(collection(db, "entries"), {
+    type: "diary",
+    mood: $("moodSelect")?.value || "",
+    text: $("entryMood")?.value?.trim() || "",
+    good: $("entryGood")?.value?.trim() || "",
+    hard: $("entryHard")?.value?.trim() || "",
+    uid: currentUser.uid,
+    author: currentUser.email,
+    createdAt: serverTimestamp()
+  });
 
-    show("home");
-
-  } catch (e) {
-    console.error("❌ Error guardando entrada:", e);
-  }
+  show("home");
 });
 
-// ---------------- AUTH STATE SAFE ----------------
+// ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
 
@@ -231,65 +204,113 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  try {
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
 
-    if (!snap.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        role: "user",
-        professionalId: null,
-        createdAt: serverTimestamp()
-      });
-    }
-
-    const roleData = (await getDoc(userRef)).data();
-    isPro = roleData?.role === "pro";
-
-  } catch (e) {
-    console.error("❌ Error user init:", e);
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      role: "user",
+      professionalId: null,
+      createdAt: serverTimestamp()
+    });
   }
 
-  // ---------------- ENTRIES SAFE ----------------
+  const roleData = (await getDoc(userRef)).data();
+  isPro = roleData?.role === "pro";
 
-  if (unsubEntries) unsubEntries();
+  $("navProfessional")?.classList.toggle("hidden", !isPro);
 
-  if (!entriesList) {
-    console.warn("⚠️ entriesList no existe");
-  } else {
+  // ---------------- PATIENTS ----------------
 
-    const entriesQ = isPro
-      ? query(collection(db, "entries"), orderBy("createdAt", "desc"))
-      : query(collection(db, "entries"), where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+  if (unsubPatients) unsubPatients();
 
-    unsubEntries = onSnapshot(entriesQ, (snap) => {
+  if (isPro && patientsList) {
 
-      entriesList.innerHTML = "";
+    const q = query(
+      collection(db, "users"),
+      where("professionalId", "==", user.uid)
+    );
+
+    unsubPatients = onSnapshot(q, (snap) => {
+
+      patientsList.innerHTML = "";
+
+      console.log("👥 Pacientes:", snap.size);
 
       if (snap.empty) {
-        entriesList.innerHTML = "<p>No hay entradas</p>";
+        patientsList.innerHTML = "<p>No tienes pacientes</p>";
         return;
       }
 
       snap.forEach(docSnap => {
-        const e = docSnap.data();
+
+        const data = docSnap.data();
 
         const div = document.createElement("div");
-        div.className = "entry";
+        div.className = "patientItem";
 
         div.innerHTML = `
-          <div class="date">📅 ${formatDate(e.createdAt)}</div>
-          <div><strong>${e.mood || "Entrada"}</strong></div>
-          <div>🧠 ${e.text || e.moodText || ""}</div>
+          <div class="patientEmail">👤 ${data.email || ""}</div>
+          <div class="patientHint">Ver entradas</div>
         `;
 
-        entriesList.appendChild(div);
-      });
+        div.onclick = () => openPatient(data.uid);
 
-    }, (err) => {
-      console.error("❌ Error entries:", err);
+        patientsList.appendChild(div);
+      });
     });
   }
+
+  // ---------------- ENTRIES ----------------
+
+  if (unsubEntries) unsubEntries();
+
+  const entriesQ = isPro
+    ? query(collection(db, "entries"))
+    : query(collection(db, "entries"), where("uid", "==", user.uid));
+
+  unsubEntries = onSnapshot(entriesQ, (snap) => {
+
+    if (!entriesList) return;
+
+    entriesList.innerHTML = "";
+
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>No hay entradas</p>";
+      return;
+    }
+
+    snap.forEach(docSnap => {
+
+      const e = docSnap.data();
+
+      const div = document.createElement("div");
+      div.className = "entry";
+
+      div.innerHTML = `
+        <div class="date">📅 ${formatDate(e.createdAt)}</div>
+        <div><strong>${e.mood || ""}</strong></div>
+        <div>${e.text || ""}</div>
+      `;
+
+      entriesList.appendChild(div);
+    });
+  });
 });
+
+// ---------------- ACTIONS ----------------
+
+window.deleteEntry = async (id) => {
+  await deleteDoc(doc(db, "entries", id));
+};
+
+window.editEntry = async (id, oldText) => {
+  const t = prompt("Editar texto:", oldText);
+  if (!t) return;
+
+  await updateDoc(doc(db, "entries", id), {
+    text: t
+  });
+};
