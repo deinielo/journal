@@ -1,6 +1,4 @@
-console.log("JS OK - ULTRA SAFE MODE");
-
-// ---------------- FIREBASE ----------------
+console.log("JS OK");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
@@ -30,7 +28,8 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-// ---------------- INIT ----------------
+
+// ---------------- FIREBASE ----------------
 
 const app = initializeApp({
   apiKey: "AIzaSyANvBWfE15OZD4yQmPL8nnCPQQzj5a44WU",
@@ -42,30 +41,18 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// ---------------- SAFE DOM ----------------
-
-const $ = (id) => {
-  const el = document.getElementById(id);
-  if (!el) console.warn(`⚠️ Falta #${id}`);
-  return el;
-};
 
 // ---------------- STATE ----------------
 
 let currentUser = null;
 let isPro = false;
-
 let unsubEntries = null;
-let unsubPatients = null;
-let unsubPatientEntries = null;
+let unsubCounter = null;
 
-// ---------------- ELEMENTS ----------------
 
-const entriesList = $("entriesList");
-const patientsList = $("patientsList");
-const patientEntriesList = $("patientEntriesList");
+// ---------------- UI ----------------
 
-// ---------------- SCREENS ----------------
+const $ = (id) => document.getElementById(id);
 
 const screens = {
   auth: $("auth"),
@@ -75,96 +62,57 @@ const screens = {
   sleep: $("sleep"),
   habits: $("habits"),
   feed: $("feed"),
-  professional: $("professional"),
-  patientDetail: $("patientDetail"),
 };
 
-// ---------------- SAFE NAV ----------------
+const entriesList = $("entriesList");
 
-function show(name) {
-  if (!screens[name]) {
-    console.error(`❌ SCREEN NO EXISTE: ${name}`);
-    return;
-  }
 
-  Object.values(screens).forEach(s => s?.classList.add("hidden"));
-  screens[name].classList.remove("hidden");
-}
-
-// ---------------- FORMAT ----------------
+// ---------------- HELPERS ----------------
 
 function formatDate(ts) {
-  if (!ts) return "";
+  if (!ts) return "Sin fecha";
   try {
     return ts.toDate().toLocaleString("es-ES");
   } catch {
-    return "";
+    return "Fecha inválida";
   }
 }
 
-// ---------------- PATIENT ----------------
-
-function openPatient(uid) {
-  if (!uid) return;
-
-  show("patientDetail");
-  loadPatientEntries(uid);
+function show(name) {
+  Object.values(screens).forEach(s => s?.classList.add("hidden"));
+  screens[name]?.classList.remove("hidden");
 }
 
-function loadPatientEntries(uid) {
 
-  if (!patientEntriesList) return;
+// ---------------- NAV ----------------
 
-  if (unsubPatientEntries) unsubPatientEntries();
+$("goDiary")?.addEventListener("click", () => show("diary"));
+$("goEmotion")?.addEventListener("click", () => show("emotion"));
+$("goSleep")?.addEventListener("click", () => show("sleep"));
+$("goHabits")?.addEventListener("click", () => show("habits"));
+$("goFeed")?.addEventListener("click", () => show("feed"));
 
-  const q = query(
-    collection(db, "entries"),
-    where("uid", "==", uid)
-  );
+$("navHome")?.addEventListener("click", () => show("home"));
+$("navDiary")?.addEventListener("click", () => show("diary"));
+$("navFeed")?.addEventListener("click", () => show("feed"));
+$("navEmotion")?.addEventListener("click", () => show("emotion"));
+$("navSleep")?.addEventListener("click", () => show("sleep"));
+$("navHabits")?.addEventListener("click", () => show("habits"));
 
-  unsubPatientEntries = onSnapshot(q, (snap) => {
+$("backHome1")?.addEventListener("click", () => show("home"));
+$("backHome2")?.addEventListener("click", () => show("home"));
+$("backHome3")?.addEventListener("click", () => show("home"));
+$("backHome4")?.addEventListener("click", () => show("home"));
+$("backHomeFeed")?.addEventListener("click", () => show("home"));
 
-    patientEntriesList.innerHTML = "";
-
-    snap.forEach(d => {
-      const e = d.data();
-
-      const div = document.createElement("div");
-      div.className = "entry";
-
-      div.innerHTML = `
-        <div>${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood || ""}</strong></div>
-        <div>${e.text || e.moodText || ""}</div>
-      `;
-
-      patientEntriesList.appendChild(div);
-    });
-
-  }, () => {});
-}
-
-// ---------------- BUTTONS SAFE ----------------
-
-const bind = (id, fn) => {
-  const el = $(id);
-  if (el) el.addEventListener("click", fn);
-};
-
-bind("goDiary", () => show("diary"));
-bind("goEmotion", () => show("emotion"));
-bind("goSleep", () => show("sleep"));
-bind("goHabits", () => show("habits"));
-bind("goFeed", () => show("feed"));
-
-bind("backToPatients", () => show("professional"));
 
 // ---------------- AUTH ----------------
 
-bind("btnGoogle", () => signInWithPopup(auth, provider));
-bind("btnLogout", () => signOut(auth));
+$("btnGoogle")?.addEventListener("click", () => {
+  signInWithPopup(auth, provider);
+});
 
-bind("btnEmail", async () => {
+$("btnEmail")?.addEventListener("click", async () => {
   const email = prompt("Email");
   const pass = prompt("Password");
   if (!email || !pass) return;
@@ -176,23 +124,32 @@ bind("btnEmail", async () => {
   }
 });
 
+$("btnLogout")?.addEventListener("click", () => signOut(auth));
+
+
 // ---------------- SAVE ----------------
 
-bind("btnSave", async () => {
+$("btnSave")?.addEventListener("click", async () => {
   if (!currentUser) return;
 
   await addDoc(collection(db, "entries"), {
-    mood: $("moodSelect")?.value || "",
-    text: $("entryMood")?.value?.trim() || "",
-    good: $("entryGood")?.value?.trim() || "",
-    hard: $("entryHard")?.value?.trim() || "",
+    type: "diary",
+    mood: $("moodSelect")?.value,
+    moodText: $("entryMood")?.value?.trim(),
+    good: $("entryGood")?.value?.trim(),
+    hard: $("entryHard")?.value?.trim(),
     uid: currentUser.uid,
     author: currentUser.email,
     createdAt: serverTimestamp()
   });
 
+  $("entryMood").value = "";
+  $("entryGood").value = "";
+  $("entryHard").value = "";
+
   show("home");
 });
+
 
 // ---------------- AUTH STATE ----------------
 
@@ -207,52 +164,140 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
-  const ref = doc(db, "users", user.uid);
-  const snap = await getDoc(ref);
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
 
   if (!snap.exists()) {
-    await setDoc(ref, {
-      uid: user.uid,
+    await setDoc(userRef, {
       email: user.email,
       role: "user",
-      professionalId: null,
       createdAt: serverTimestamp()
     });
   }
 
-  const data = (await getDoc(ref)).data();
-  isPro = data?.role === "pro";
+  const roleSnap = await getDoc(userRef);
+  isPro = roleSnap.data()?.role === "pro";
 
-  $("navProfessional")?.classList.toggle("hidden", !isPro);
 
-  // ---------------- ENTRIES ----------------
+  // ---------------- COUNTER ----------------
+
+  if (unsubCounter) unsubCounter();
+
+  const counterQ = isPro
+    ? collection(db, "entries")
+    : query(collection(db, "entries"), where("uid", "==", user.uid));
+
+  unsubCounter = onSnapshot(counterQ, (snap) => {
+    const el = $("contador-registros");
+    if (el) el.textContent = snap.size;
+  });
+
+
+  // ---------------- ENTRIES (FIX FINAL PRO + USER) ----------------
 
   if (unsubEntries) unsubEntries();
 
-  if (!entriesList) return;
+  const base = collection(db, "entries");
 
-  const q = isPro
-    ? query(collection(db, "entries"), orderBy("createdAt", "desc"))
-    : query(collection(db, "entries"), where("uid", "==", user.uid));
+  let entriesQ;
 
-  unsubEntries = onSnapshot(q, (snap) => {
+  if (isPro) {
+    entriesQ = query(base, orderBy("createdAt", "desc"));
+  } else {
+    entriesQ = query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+  }
+
+  unsubEntries = onSnapshot(entriesQ, (snap) => {
+
+    if (!entriesList) return;
 
     entriesList.innerHTML = "";
 
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>No hay entradas</p>";
+      return;
+    }
+
+    // ---------------- PRO VIEW ----------------
+    if (isPro) {
+
+      const grouped = {};
+
+      snap.forEach(d => {
+        const e = { id: d.id, ...d.data() };
+        const key = e.author || "Desconocido";
+
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(e);
+      });
+
+      Object.entries(grouped).forEach(([user, items]) => {
+
+        const section = document.createElement("div");
+        section.className = "patientGroup";
+        section.innerHTML = `<h3>👤 ${user}</h3>`;
+
+        items.forEach(e => {
+
+          const div = document.createElement("div");
+          div.className = "entry";
+
+          div.innerHTML = `
+            <div class="date">📅 ${formatDate(e.createdAt)}</div>
+            <div><strong>${e.mood || "Entrada"}</strong></div>
+            ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+            ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+            ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+
+            <div class="entryActions">
+              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
+              <button onclick="deleteEntry('${e.id}')">🗑️</button>
+            </div>
+          `;
+
+          section.appendChild(div);
+        });
+
+        entriesList.appendChild(section);
+      });
+
+      return;
+    }
+
+    // ---------------- USER VIEW ----------------
     snap.forEach(d => {
+
       const e = d.data();
 
       const div = document.createElement("div");
       div.className = "entry";
 
       div.innerHTML = `
-        <div>${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood || ""}</strong></div>
-        <div>${e.text || ""}</div>
+        <div class="date">📅 ${formatDate(e.createdAt)}</div>
+        <div><strong>${e.mood || "Entrada"}</strong></div>
+        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
       `;
 
       entriesList.appendChild(div);
     });
 
-  }, () => {});
+  });
 });
+
+
+// ---------------- GLOBAL ACTIONS ----------------
+
+window.deleteEntry = async (id) => {
+  await deleteDoc(doc(db, "entries", id));
+};
+
+window.editEntry = async (id, oldText) => {
+  const t = prompt("Editar texto:", oldText);
+  if (!t) return;
+
+  await updateDoc(doc(db, "entries", id), {
+    moodText: t
+  });
+};
