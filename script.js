@@ -157,16 +157,16 @@ $("btnLogout")?.addEventListener("click", () => signOut(auth));
 $("btnSave")?.addEventListener("click", async () => {
   if (!currentUser) return;
 
-  await addDoc(collection(db, "entries"), {
-    type: "diary",
-    mood: $("moodSelect")?.value,
-    moodText: $("entryMood")?.value?.trim(),
-    good: $("entryGood")?.value?.trim(),
-    hard: $("entryHard")?.value?.trim(),
-    uid: currentUser.uid,
-    author: currentUser.email,
-    createdAt: serverTimestamp()
-  });
+await addDoc(collection(db, "entries"), {
+  type: "diary",
+  mood: $("moodSelect")?.value,
+  moodText: $("entryMood")?.value?.trim(),
+  good: $("entryGood")?.value?.trim(),
+  hard: $("entryHard")?.value?.trim(),
+  uid: currentUser.uid,
+  author: currentUser.email,
+  createdAt: serverTimestamp()
+});
 
   show("home");
 });
@@ -188,13 +188,13 @@ onAuthStateChanged(auth, async (user) => {
   const snap = await getDoc(userRef);
 
   if (!snap.exists()) {
-    await setDoc(userRef, {
-      uid: user.uid,
-      email: user.email,
-      role: "user",
-      professionalId: null,
-      createdAt: serverTimestamp()
-    });
+await setDoc(userRef, {
+  uid: user.uid,
+  email: user.email,
+  role: "user",
+  professionalId: null,
+  createdAt: serverTimestamp()
+});
   }
 
   const roleData = (await getDoc(userRef)).data();
