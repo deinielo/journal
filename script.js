@@ -28,7 +28,6 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-
 // ---------------- FIREBASE ----------------
 
 const app = initializeApp({
@@ -41,14 +40,13 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-
 // ---------------- STATE ----------------
 
 let currentUser = null;
 let isPro = false;
 let unsubEntries = null;
 let unsubCounter = null;
-
+let unsubPatients = null;
 
 // ---------------- UI ----------------
 
@@ -68,7 +66,6 @@ const screens = {
 const entriesList = $("entriesList");
 const patientsList = $("patientsList");
 
-
 // ---------------- HELPERS ----------------
 
 function formatDate(ts) {
@@ -84,7 +81,6 @@ function show(name) {
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
   screens[name]?.classList.remove("hidden");
 }
-
 
 // ---------------- NAV ----------------
 
@@ -102,13 +98,7 @@ $("navSleep")?.addEventListener("click", () => show("sleep"));
 $("navHabits")?.addEventListener("click", () => show("habits"));
 $("navProfessional")?.addEventListener("click", () => show("professional"));
 
-$("backHome1")?.addEventListener("click", () => show("home"));
-$("backHome2")?.addEventListener("click", () => show("home"));
-$("backHome3")?.addEventListener("click", () => show("home"));
-$("backHome4")?.addEventListener("click", () => show("home"));
-$("backHomeFeed")?.addEventListener("click", () => show("home"));
 $("backHomeProfessional")?.addEventListener("click", () => show("home"));
-
 
 // ---------------- AUTH ----------------
 
@@ -130,7 +120,6 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-
 // ---------------- SAVE ----------------
 
 $("btnSave")?.addEventListener("click", async () => {
@@ -147,18 +136,12 @@ $("btnSave")?.addEventListener("click", async () => {
     createdAt: serverTimestamp()
   });
 
-  $("entryMood").value = "";
-  $("entryGood").value = "";
-  $("entryHard").value = "";
-
   show("home");
 });
-
 
 // ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
-
   currentUser = user;
 
   if (!user) {
@@ -179,40 +162,32 @@ onAuthStateChanged(auth, async (user) => {
     });
   }
 
-  const roleSnap = await getDoc(userRef);
-  isPro = roleSnap.data()?.role === "pro";
-  if (isPro) {
-  $("navProfessional")?.classList.remove("hidden");
-} else {
-  $("navProfessional")?.classList.add("hidden");
-}
+  const roleData = (await getDoc(userRef)).data();
+  isPro = roleData?.role === "pro";
 
-if (isPro && patientsList) {
+  $("navProfessional")?.classList.toggle("hidden", !isPro);
 
-  const usersRef = collection(db, "users");
+  // ---------------- PACIENTES (PRO ONLY) ----------------
 
-  onSnapshot(usersRef, (snap) => {
+  if (unsubPatients) unsubPatients();
 
-    patientsList.innerHTML = "";
+  if (isPro && patientsList) {
+    unsubPatients = onSnapshot(collection(db, "users"), (snap) => {
+      patientsList.innerHTML = "";
 
-    snap.forEach(docu => {
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
 
-      const data = docu.data();
+        if (data.role === "pro") return;
 
-      if (data.role === "pro") return;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `👤 ${data.email || "Usuario"}`;
 
-      const div = document.createElement("div");
-      div.className = "entry";
-
-      div.innerHTML = `
-        <strong>👤 ${data.email || "Usuario"}</strong>
-      `;
-
-      patientsList.appendChild(div);
+        patientsList.appendChild(div);
+      });
     });
-  });
-}
-
+  }
 
   // ---------------- COUNTER ----------------
 
@@ -227,20 +202,15 @@ if (isPro && patientsList) {
     if (el) el.textContent = snap.size;
   });
 
-
-  // ---------------- ENTRIES (FIX FINAL PRO + USER) ----------------
+  // ---------------- ENTRIES ----------------
 
   if (unsubEntries) unsubEntries();
 
   const base = collection(db, "entries");
 
-  let entriesQ;
-
-  if (isPro) {
-    entriesQ = query(base, orderBy("createdAt", "desc"));
-  } else {
-    entriesQ = query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
-  }
+  const entriesQ = isPro
+    ? query(base, orderBy("createdAt", "desc"))
+    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
   unsubEntries = onSnapshot(entriesQ, (snap) => {
 
@@ -253,27 +223,23 @@ if (isPro && patientsList) {
       return;
     }
 
-    // ---------------- PRO VIEW ----------------
     if (isPro) {
-
       const grouped = {};
 
-      snap.forEach(d => {
-        const e = { id: d.id, ...d.data() };
+      snap.forEach((docSnap) => {
+        const e = { id: docSnap.id, ...docSnap.data() };
         const key = e.author || "Desconocido";
 
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(e);
       });
 
-      Object.entries(grouped).forEach(([user, items]) => {
-
+      Object.entries(grouped).forEach(([author, items]) => {
         const section = document.createElement("div");
         section.className = "patientGroup";
-        section.innerHTML = `<h3>👤 ${user}</h3>`;
+        section.innerHTML = `<h3>👤 ${author}</h3>`;
 
-        items.forEach(e => {
-
+        items.forEach((e) => {
           const div = document.createElement("div");
           div.className = "entry";
 
@@ -283,11 +249,6 @@ if (isPro && patientsList) {
             ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
             ${e.good ? `<div>✨ ${e.good}</div>` : ""}
             ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-
-            <div class="entryActions">
-              <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
-              <button onclick="deleteEntry('${e.id}')">🗑️</button>
-            </div>
           `;
 
           section.appendChild(div);
@@ -299,10 +260,8 @@ if (isPro && patientsList) {
       return;
     }
 
-    // ---------------- USER VIEW ----------------
-    snap.forEach(d => {
-
-      const e = d.data();
+    snap.forEach((docSnap) => {
+      const e = docSnap.data();
 
       const div = document.createElement("div");
       div.className = "entry";
@@ -321,8 +280,7 @@ if (isPro && patientsList) {
   });
 });
 
-
-// ---------------- GLOBAL ACTIONS ----------------
+// ---------------- ACTIONS ----------------
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
