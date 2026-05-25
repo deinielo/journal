@@ -44,11 +44,13 @@ const provider = new GoogleAuthProvider();
 
 let currentUser = null;
 let isPro = false;
+
 let unsubEntries = null;
 let unsubCounter = null;
 let unsubPatients = null;
-let selectedPatientId = null;
 let unsubPatientEntries = null;
+
+let selectedPatientUid = null;
 
 // ---------------- UI ----------------
 
@@ -63,10 +65,12 @@ const screens = {
   habits: $("habits"),
   feed: $("feed"),
   professional: $("professional"),
+  patientDetail: $("patientDetail"),
 };
 
 const entriesList = $("entriesList");
 const patientsList = $("patientsList");
+const patientEntriesList = $("patientEntriesList");
 
 // ---------------- HELPERS ----------------
 
@@ -84,18 +88,18 @@ function show(name) {
   screens[name]?.classList.remove("hidden");
 }
 
-const patientDetail = $("patientDetail");
-const patientEntriesList = $("patientEntriesList");
+// ---------------- PATIENT VIEW ----------------
 
 function openPatient(uid) {
-  selectedPatientId = uid;
+  selectedPatientUid = uid;
   show("patientDetail");
   loadPatientEntries(uid);
 }
 
 function loadPatientEntries(uid) {
 
-  console.log("UID seleccionado:", uid);
+  console.log("Cargando entradas de UID:", uid);
+
   if (unsubPatientEntries) unsubPatientEntries();
 
   const q = query(
@@ -105,7 +109,8 @@ function loadPatientEntries(uid) {
   );
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
-console.log("ENTRADAS:", snap.size);
+
+    console.log("ENTRADAS ENCONTRADAS:", snap.size);
 
     patientEntriesList.innerHTML = "";
 
@@ -133,27 +138,9 @@ console.log("ENTRADAS:", snap.size);
   });
 }
 
-$("backToPatients")?.addEventListener("click", () => {
-  show("professional");
-});
-
 // ---------------- NAV ----------------
 
-$("goDiary")?.addEventListener("click", () => show("diary"));
-$("goEmotion")?.addEventListener("click", () => show("emotion"));
-$("goSleep")?.addEventListener("click", () => show("sleep"));
-$("goHabits")?.addEventListener("click", () => show("habits"));
-$("goFeed")?.addEventListener("click", () => show("feed"));
-
-$("navHome")?.addEventListener("click", () => show("home"));
-$("navDiary")?.addEventListener("click", () => show("diary"));
-$("navFeed")?.addEventListener("click", () => show("feed"));
-$("navEmotion")?.addEventListener("click", () => show("emotion"));
-$("navSleep")?.addEventListener("click", () => show("sleep"));
-$("navHabits")?.addEventListener("click", () => show("habits"));
-$("navProfessional")?.addEventListener("click", () => show("professional"));
-
-$("backHomeProfessional")?.addEventListener("click", () => show("home"));
+$("backToPatients")?.addEventListener("click", () => show("professional"));
 
 // ---------------- AUTH ----------------
 
@@ -197,6 +184,7 @@ $("btnSave")?.addEventListener("click", async () => {
 // ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
+
   currentUser = user;
 
   if (!user) {
@@ -209,66 +197,62 @@ onAuthStateChanged(auth, async (user) => {
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
-if (!snap.exists()) {
-  await setDoc(userRef, {
-    uid: user.uid,
-    email: user.email,
-    role: "user",
-    professionalId: null,
-    createdAt: serverTimestamp()
-  });
-}
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      role: "user",
+      professionalId: null,
+      createdAt: serverTimestamp()
+    });
+  }
 
   const roleData = (await getDoc(userRef)).data();
   isPro = roleData?.role === "pro";
 
   $("navProfessional")?.classList.toggle("hidden", !isPro);
 
-  // ---------------- PACIENTES (PRO ONLY) ----------------
+  // ---------------- PATIENTS ----------------
 
-if (unsubPatients) {
-  unsubPatients();
-  unsubPatients = null;
-}
+  if (unsubPatients) unsubPatients();
 
-if (isPro && patientsList) {
+  if (isPro && patientsList) {
 
-  const usersRef = collection(db, "users");
+    const q = query(
+      collection(db, "users"),
+      where("professionalId", "==", user.uid)
+    );
 
-  const q = query(
-    usersRef,
-    where("professionalId", "==", currentUser.uid)
-  );
+    unsubPatients = onSnapshot(q, (snap) => {
 
-  unsubPatients = onSnapshot(q, (snap) => {
+      patientsList.innerHTML = "";
 
-    patientsList.innerHTML = "";
+      console.log("PACIENTES:", snap.size);
 
-    console.log("PACIENTES:", snap.size);
+      if (snap.empty) {
+        patientsList.innerHTML = "<p>No tienes pacientes</p>";
+        return;
+      }
 
-    if (snap.empty) {
-      patientsList.innerHTML = "<p>No tienes pacientes asignados</p>";
-      return;
-    }
+      snap.forEach(docSnap => {
 
-    snap.forEach(docSnap => {
+        const data = docSnap.data();
 
-      const data = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "patientItem";
 
-const div = document.createElement("div");
-div.className = "patientItem";
+        div.innerHTML = `
+          <div class="patientEmail">👤 ${data.email}</div>
+          <div class="patientHint">Toca para ver entradas</div>
+        `;
 
-div.innerHTML = `
-  <div class="patientEmail">👤 ${data.email || "Usuario"}</div>
-  <div class="patientHint">Toca para ver entradas</div>
-`;
+        // 🔥 FIX IMPORTANTE: usar UID REAL
+        div.onclick = () => openPatient(data.uid);
 
-div.onclick = () => openPatient(docSnap.id);
-
-patientsList.appendChild(div);
+        patientsList.appendChild(div);
+      });
     });
-  });
-}
+  }
 
   // ---------------- COUNTER ----------------
 
@@ -304,44 +288,8 @@ patientsList.appendChild(div);
       return;
     }
 
-    if (isPro) {
-      const grouped = {};
+    snap.forEach(docSnap => {
 
-      snap.forEach((docSnap) => {
-        const e = { id: docSnap.id, ...docSnap.data() };
-        const key = e.author || "Desconocido";
-
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(e);
-      });
-
-      Object.entries(grouped).forEach(([author, items]) => {
-        const section = document.createElement("div");
-        section.className = "patientGroup";
-        section.innerHTML = `<h3>👤 ${author}</h3>`;
-
-        items.forEach((e) => {
-          const div = document.createElement("div");
-          div.className = "entry";
-
-          div.innerHTML = `
-            <div class="date">📅 ${formatDate(e.createdAt)}</div>
-            <div><strong>${e.mood || "Entrada"}</strong></div>
-            ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
-            ${e.good ? `<div>✨ ${e.good}</div>` : ""}
-            ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
-          `;
-
-          section.appendChild(div);
-        });
-
-        entriesList.appendChild(section);
-      });
-
-      return;
-    }
-
-    snap.forEach((docSnap) => {
       const e = docSnap.data();
 
       const div = document.createElement("div");
@@ -349,19 +297,14 @@ patientsList.appendChild(div);
 
       div.innerHTML = `
         <div class="date">📅 ${formatDate(e.createdAt)}</div>
-        <div><strong>${e.mood || "Entrada"}</strong></div>
-        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
-        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
-        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
+        <div><strong>${e.mood}</strong></div>
+        <div>${e.moodText || ""}</div>
       `;
 
       entriesList.appendChild(div);
     });
-
   });
 });
-
-
 
 // ---------------- ACTIONS ----------------
 
