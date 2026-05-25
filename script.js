@@ -207,13 +207,15 @@ onAuthStateChanged(auth, async (user) => {
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      email: user.email,
-      role: "user",
-      createdAt: serverTimestamp()
-    });
-  }
+if (!snap.exists()) {
+  await setDoc(userRef, {
+    uid: user.uid,
+    email: user.email,
+    role: "user",
+    professionalId: null,
+    createdAt: serverTimestamp()
+  });
+}
 
   const roleData = (await getDoc(userRef)).data();
   isPro = roleData?.role === "pro";
@@ -259,7 +261,7 @@ div.innerHTML = `
   <div class="patientHint">Toca para ver entradas</div>
 `;
 
-div.onclick = () => openPatient(docSnap.id);
+div.onclick = () => openPatient(data.uid);
 
 patientsList.appendChild(div);
     });
