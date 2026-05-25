@@ -542,3 +542,30 @@ button:active,
   transform: scale(0.96);
   transition: transform 0.08s ease;
 }
+
+.patientItem {
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: #1f1f1f;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+  border: 1px solid transparent;
+}
+
+.patientItem:hover {
+  transform: scale(1.02);
+  border: 1px solid #4caf50;
+  background: #2a2a2a;
+}
+
+.patientEmail {
+  font-weight: bold;
+}
+
+.patientHint {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
