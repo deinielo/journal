@@ -47,6 +47,8 @@ let isPro = false;
 let unsubEntries = null;
 let unsubCounter = null;
 let unsubPatients = null;
+let selectedPatientId = null;
+let unsubPatientEntries = null;
 
 // ---------------- UI ----------------
 
@@ -80,6 +82,50 @@ function formatDate(ts) {
 function show(name) {
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
   screens[name]?.classList.remove("hidden");
+}
+
+patientDetail: $("patientDetail"),
+
+function openPatient(uid) {
+  selectedPatientId = uid;
+  show("patientDetail")
+  loadPatientEntries(uid);
+}
+
+function loadPatientEntries(uid) {
+
+  if (unsubPatientEntries) unsubPatientEntries();
+
+  const q = query(
+    collection(db, "entries"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc")
+  );
+
+  unsubPatientEntries = onSnapshot(q, (snap) => {
+
+    entriesList.innerHTML = "";
+
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>Este paciente no tiene entradas</p>";
+      return;
+    }
+
+    snap.forEach(d => {
+      const e = d.data();
+
+      const div = document.createElement("div");
+      div.className = "entry";
+
+      div.innerHTML = `
+        <div class="date">📅 ${e.createdAt?.toDate?.().toLocaleString("es-ES") || ""}</div>
+        <div><strong>${e.mood || "Entrada"}</strong></div>
+        <div>${e.moodText || ""}</div>
+      `;
+
+      entriesList.appendChild(div);
+    });
+  });
 }
 
 // ---------------- NAV ----------------
@@ -218,7 +264,7 @@ onSnapshot(usersRef, (snap) => {
       div.innerHTML = `
         <strong>👤 ${data.email || "Usuario"}</strong>
       `;
-
+      div.onclick = () => openPatient(data.uid);
       patientsList.appendChild(div);
     });
   });
@@ -314,6 +360,8 @@ onSnapshot(usersRef, (snap) => {
 
   });
 });
+
+
 
 // ---------------- ACTIONS ----------------
 
