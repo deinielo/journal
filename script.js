@@ -62,9 +62,11 @@ const screens = {
   sleep: $("sleep"),
   habits: $("habits"),
   feed: $("feed"),
+  professional: $("professional"),
 };
 
 const entriesList = $("entriesList");
+const patientsList = $("patientsList");
 
 
 // ---------------- HELPERS ----------------
@@ -98,12 +100,14 @@ $("navFeed")?.addEventListener("click", () => show("feed"));
 $("navEmotion")?.addEventListener("click", () => show("emotion"));
 $("navSleep")?.addEventListener("click", () => show("sleep"));
 $("navHabits")?.addEventListener("click", () => show("habits"));
+$("navProfessional")?.addEventListener("click", () => show("professional"));
 
 $("backHome1")?.addEventListener("click", () => show("home"));
 $("backHome2")?.addEventListener("click", () => show("home"));
 $("backHome3")?.addEventListener("click", () => show("home"));
 $("backHome4")?.addEventListener("click", () => show("home"));
 $("backHomeFeed")?.addEventListener("click", () => show("home"));
+$("backHomeProfessional")?.addEventListener("click", () => show("home"));
 
 
 // ---------------- AUTH ----------------
@@ -164,6 +168,32 @@ onAuthStateChanged(auth, async (user) => {
 
   show("home");
 
+  if (isPro && patientsList) {
+
+  const usersRef = collection(db, "users");
+
+  onSnapshot(usersRef, (snap) => {
+
+    patientsList.innerHTML = "";
+
+    snap.forEach(docu => {
+
+      const data = docu.data();
+
+      if (data.role === "pro") return;
+
+      const div = document.createElement("div");
+      div.className = "entry";
+
+      div.innerHTML = `
+        <strong>👤 ${data.email || "Usuario"}</strong>
+      `;
+
+      patientsList.appendChild(div);
+    });
+  });
+}
+
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
 
@@ -177,6 +207,11 @@ onAuthStateChanged(auth, async (user) => {
 
   const roleSnap = await getDoc(userRef);
   isPro = roleSnap.data()?.role === "pro";
+  if (isPro) {
+  $("navProfessional")?.classList.remove("hidden");
+} else {
+  $("navProfessional")?.classList.add("hidden");
+}
 
 
   // ---------------- COUNTER ----------------
