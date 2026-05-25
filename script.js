@@ -1,7 +1,6 @@
-console.log("JS OK - SAFE MODE");
+console.log("JS OK (SAFE MODE)");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
 import {
   getFirestore,
   collection,
@@ -9,6 +8,7 @@ import {
   onSnapshot,
   query,
   where,
+  orderBy,
   deleteDoc,
   doc,
   updateDoc,
@@ -43,17 +43,9 @@ const provider = new GoogleAuthProvider();
 
 const $ = (id) => {
   const el = document.getElementById(id);
-  if (!el) {
-    console.warn(`⚠️ FALTA EN HTML: #${id}`);
-    return null;
-  }
+  if (!el) console.warn(`⚠️ Falta elemento HTML: #${id}`);
   return el;
 };
-
-function safeHTML(el, html) {
-  if (!el) return;
-  el.innerHTML = html;
-}
 
 // ---------------- STATE ----------------
 
@@ -63,12 +55,6 @@ let isPro = false;
 let unsubEntries = null;
 let unsubPatients = null;
 let unsubPatientEntries = null;
-
-// ---------------- ELEMENTS ----------------
-
-const entriesList = $("entriesList");
-const patientsList = $("patientsList");
-const patientEntriesList = $("patientEntriesList");
 
 // ---------------- SCREENS ----------------
 
@@ -84,33 +70,57 @@ const screens = {
 };
 
 function show(name) {
+  if (!screens[name]) {
+    console.error(`❌ Pantalla no existe en HTML: ${name}`);
+    return;
+  }
+
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
-  screens[name]?.classList.remove("hidden");
+  screens[name].classList.remove("hidden");
+
+  console.log(`📺 Pantalla: ${name}`);
 }
 
-// ---------------- PATIENTS ----------------
+// ---------------- ELEMENTS ----------------
+
+const entriesList = $("entriesList");
+const patientsList = $("patientsList");
+const patientEntriesList = $("patientEntriesList");
+
+// ---------------- FORMAT ----------------
+
+function formatDate(ts) {
+  if (!ts) return "Sin fecha";
+  try {
+    return ts.toDate().toLocaleString("es-ES");
+  } catch {
+    return "Fecha inválida";
+  }
+}
+
+// ---------------- PATIENT VIEW ----------------
 
 function openPatient(uid) {
+  if (!uid) return console.warn("⚠️ UID inválido en openPatient");
+
   show("patientDetail");
-  loadPatientEntries(uid);
-}
-
-function loadPatientEntries(uid) {
-
-  if (!patientEntriesList) return;
 
   if (unsubPatientEntries) unsubPatientEntries();
 
-  const q = query(collection(db, "entries"), where("uid", "==", uid));
+  const q = query(
+    collection(db, "entries"),
+    where("uid", "==", uid)
+  );
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
+    console.log("📊 Entradas paciente:", snap.size);
 
-    console.log("📊 Patient entries:", snap.size);
+    if (!patientEntriesList) return;
 
-    safeHTML(patientEntriesList, "");
+    patientEntriesList.innerHTML = "";
 
     if (snap.empty) {
-      safeHTML(patientEntriesList, "<p>No hay entradas</p>");
+      patientEntriesList.innerHTML = "<p>No hay entradas</p>";
       return;
     }
 
@@ -121,9 +131,9 @@ function loadPatientEntries(uid) {
       div.className = "entry";
 
       div.innerHTML = `
-        <div>📅 ${e.createdAt?.toDate?.() || ""}</div>
+        <div>📅 ${formatDate(e.createdAt)}</div>
         <div><strong>${e.mood || ""}</strong></div>
-        <div>${e.text || ""}</div>
+        <div>${e.text || e.moodText || ""}</div>
       `;
 
       patientEntriesList.appendChild(div);
@@ -131,13 +141,29 @@ function loadPatientEntries(uid) {
   });
 }
 
-// ---------------- AUTH BUTTONS SAFE ----------------
+// ---------------- NAV SAFE ----------------
 
-$("btnGoogle")?.addEventListener("click", () => {
-  signInWithPopup(auth, provider);
+const bind = (id, fn) => {
+  const el = $(id);
+  if (el) el.addEventListener("click", fn);
+};
+
+bind("goDiary", () => show("diary"));
+bind("goEmotion", () => show("emotion"));
+bind("goSleep", () => show("sleep"));
+bind("goHabits", () => show("habits"));
+
+bind("backToPatients", () => show("professional"));
+
+bind("goFeed", () => {
+  console.warn("⚠️ feed no existe en HTML");
 });
 
-$("btnEmail")?.addEventListener("click", async () => {
+// ---------------- AUTH ----------------
+
+bind("btnGoogle", () => signInWithPopup(auth, provider));
+
+bind("btnEmail", async () => {
   const email = prompt("Email");
   const pass = prompt("Password");
   if (!email || !pass) return;
@@ -149,11 +175,11 @@ $("btnEmail")?.addEventListener("click", async () => {
   }
 });
 
-$("btnLogout")?.addEventListener("click", () => signOut(auth));
+bind("btnLogout", () => signOut(auth));
 
 // ---------------- SAVE ----------------
 
-$("btnSave")?.addEventListener("click", async () => {
+bind("btnSave", async () => {
   if (!currentUser) return;
 
   await addDoc(collection(db, "entries"), {
@@ -172,7 +198,6 @@ $("btnSave")?.addEventListener("click", async () => {
 // ---------------- AUTH STATE ----------------
 
 onAuthStateChanged(auth, async (user) => {
-
   currentUser = user;
 
   if (!user) {
@@ -206,43 +231,63 @@ onAuthStateChanged(auth, async (user) => {
 
   if (isPro && patientsList) {
 
-    const q = query(collection(db, "users"), where("professionalId", "==", user.uid));
+    const q = query(
+      collection(db, "users"),
+      where("professionalId", "==", user.uid)
+    );
 
     unsubPatients = onSnapshot(q, (snap) => {
+      patientsList.innerHTML = "";
 
-      safeHTML(patientsList, "");
+      console.log("👥 Pacientes:", snap.size);
+
+      if (snap.empty) {
+        patientsList.innerHTML = "<p>No tienes pacientes</p>";
+        return;
+      }
 
       snap.forEach(d => {
-        const u = d.data();
+        const data = d.data();
 
         const div = document.createElement("div");
         div.className = "patientItem";
 
         div.innerHTML = `
-          <div>👤 ${u.email}</div>
+          <div>👤 ${data.email || ""}</div>
           <div>Ver entradas</div>
         `;
 
-        div.onclick = () => openPatient(u.uid);
+        div.onclick = () => openPatient(data.uid);
 
         patientsList.appendChild(div);
       });
     });
   }
 
-  // ---------------- ENTRIES ----------------
+  // ---------------- ENTRIES (SAFE FIX REAL) ----------------
 
   if (unsubEntries) unsubEntries();
 
-  const q = isPro
-    ? query(collection(db, "entries"))
-    : query(collection(db, "entries"), where("uid", "==", user.uid));
+  if (!entriesList) {
+    console.warn("⚠️ entriesList no existe");
+    return;
+  }
 
-  unsubEntries = onSnapshot(q, (snap) => {
+  const base = collection(db, "entries");
 
-    if (!entriesList) return;
+  const entriesQ = isPro
+    ? query(base, orderBy("createdAt", "desc"))
+    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
-    safeHTML(entriesList, "");
+  unsubEntries = onSnapshot(entriesQ, (snap) => {
+    entriesList.innerHTML = "";
+
+    console.log("📚 Entradas:", snap.size);
+
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>No hay entradas</p>";
+      return;
+    }
 
     snap.forEach(d => {
       const e = d.data();
@@ -251,7 +296,7 @@ onAuthStateChanged(auth, async (user) => {
       div.className = "entry";
 
       div.innerHTML = `
-        <div>📅 ${e.createdAt?.toDate?.() || ""}</div>
+        <div>📅 ${formatDate(e.createdAt)}</div>
         <div><strong>${e.mood || ""}</strong></div>
         <div>${e.text || ""}</div>
       `;
@@ -261,14 +306,14 @@ onAuthStateChanged(auth, async (user) => {
   });
 });
 
-// ---------------- GLOBAL ACTIONS ----------------
+// ---------------- ACTIONS ----------------
 
 window.deleteEntry = async (id) => {
   await deleteDoc(doc(db, "entries", id));
 };
 
 window.editEntry = async (id, oldText) => {
-  const t = prompt("Editar:", oldText);
+  const t = prompt("Editar texto:", oldText);
   if (!t) return;
 
   await updateDoc(doc(db, "entries", id), {
