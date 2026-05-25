@@ -95,6 +95,7 @@ function openPatient(uid) {
 
 function loadPatientEntries(uid) {
 
+  console.log("UID seleccionado:", uid);
   if (unsubPatientEntries) unsubPatientEntries();
 
   const q = query(
@@ -104,6 +105,7 @@ function loadPatientEntries(uid) {
   );
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
+console.log("ENTRADAS:", snap.size);
 
     patientEntriesList.innerHTML = "";
 
@@ -261,7 +263,7 @@ div.innerHTML = `
   <div class="patientHint">Toca para ver entradas</div>
 `;
 
-div.onclick = () => openPatient(data.uid);
+div.onclick = () => openPatient(docSnap.id);
 
 patientsList.appendChild(div);
     });
