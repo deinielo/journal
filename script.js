@@ -222,24 +222,7 @@ if (unsubPatients) {
 
 if (isPro && patientsList) {
 
-const usersRef = collection(db, "users");
-
-onSnapshot(usersRef, (snap) => {
-  console.log("USERS RAW:", snap.docs.map(d => d.data()));
-
-  patientsList.innerHTML = "";
-
-  snap.forEach(docu => {
-    const data = docu.data();
-
-    const div = document.createElement("div");
-    div.className = "entry";
-
-    div.innerHTML = `<strong>${data.email || "sin email"}</strong>`;
-
-    patientsList.appendChild(div);
-  });
-});
+  const usersRef = collection(db, "users");
 
   const q = query(
     usersRef,
@@ -250,13 +233,16 @@ onSnapshot(usersRef, (snap) => {
 
     patientsList.innerHTML = "";
 
+    console.log("PACIENTES:", snap.size);
+
     if (snap.empty) {
       patientsList.innerHTML = "<p>No tienes pacientes asignados</p>";
       return;
     }
 
-    snap.forEach(docu => {
-      const data = docu.data();
+    snap.forEach(docSnap => {
+
+      const data = docSnap.data();
 
       const div = document.createElement("div");
       div.className = "entry";
@@ -264,7 +250,9 @@ onSnapshot(usersRef, (snap) => {
       div.innerHTML = `
         <strong>👤 ${data.email || "Usuario"}</strong>
       `;
-      div.onclick = () => openPatient(data.uid);
+
+      div.onclick = () => openPatient(docSnap.id);
+
       patientsList.appendChild(div);
     });
   });
