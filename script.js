@@ -1,4 +1,7 @@
 console.log("JS OK");
+window.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM listo");
+});
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
@@ -70,7 +73,7 @@ const screens = {
 
 const entriesList = $("entriesList");
 const patientsList = $("patientsList");
-const patientEntriesList = $("patientEntriesList");
+const patientEntriesList = document.getElementById("patientEntriesList");
 
 // ---------------- HELPERS ----------------
 
@@ -84,8 +87,15 @@ function formatDate(ts) {
 }
 
 function show(name) {
-  Object.values(screens).forEach(s => s?.classList.add("hidden"));
-  screens[name]?.classList.remove("hidden");
+  Object.values(screens).forEach(s => {
+    if (s) s.classList.add("hidden");
+  });
+
+  if (screens[name]) {
+    screens[name].classList.remove("hidden");
+  } else {
+    console.warn("Pantalla no existe:", name);
+  }
 }
 
 // ---------------- PATIENT VIEW ----------------
@@ -108,7 +118,12 @@ function loadPatientEntries(uid) {
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
 
-    patientEntriesList.innerHTML = "";
+    if (!patientEntriesList) return;
+if (!patientEntriesList) {
+  console.error("❌ patientEntriesList no existe en el DOM");
+  return;
+}
+patientEntriesList.innerHTML = "";
 
     if (snap.empty) {
       patientEntriesList.innerHTML = "<p>Este paciente no tiene entradas</p>";
