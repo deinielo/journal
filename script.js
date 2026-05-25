@@ -176,7 +176,24 @@ if (unsubPatients) {
 
 if (isPro && patientsList) {
 
-  const usersRef = collection(db, "users");
+const usersRef = collection(db, "users");
+
+onSnapshot(usersRef, (snap) => {
+  console.log("USERS RAW:", snap.docs.map(d => d.data()));
+
+  patientsList.innerHTML = "";
+
+  snap.forEach(docu => {
+    const data = docu.data();
+
+    const div = document.createElement("div");
+    div.className = "entry";
+
+    div.innerHTML = `<strong>${data.email || "sin email"}</strong>`;
+
+    patientsList.appendChild(div);
+  });
+});
 
   const q = query(
     usersRef,
