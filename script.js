@@ -169,25 +169,43 @@ onAuthStateChanged(auth, async (user) => {
 
   // ---------------- PACIENTES (PRO ONLY) ----------------
 
-  if (unsubPatients) unsubPatients();
+if (unsubPatients) {
+  unsubPatients();
+  unsubPatients = null;
+}
 
-  if (isPro && patientsList) {
-    unsubPatients = onSnapshot(collection(db, "users"), (snap) => {
-      patientsList.innerHTML = "";
+if (isPro && patientsList) {
 
-      snap.forEach((docSnap) => {
-        const data = docSnap.data();
+  const usersRef = collection(db, "users");
 
-        if (data.role === "pro") return;
+  const q = query(
+    usersRef,
+    where("professionalId", "==", currentUser.uid)
+  );
 
-        const div = document.createElement("div");
-        div.className = "entry";
-        div.innerHTML = `👤 ${data.email || "Usuario"}`;
+  unsubPatients = onSnapshot(q, (snap) => {
 
-        patientsList.appendChild(div);
-      });
+    patientsList.innerHTML = "";
+
+    if (snap.empty) {
+      patientsList.innerHTML = "<p>No tienes pacientes asignados</p>";
+      return;
+    }
+
+    snap.forEach(docu => {
+      const data = docu.data();
+
+      const div = document.createElement("div");
+      div.className = "entry";
+
+      div.innerHTML = `
+        <strong>👤 ${data.email || "Usuario"}</strong>
+      `;
+
+      patientsList.appendChild(div);
     });
-  }
+  });
+}
 
   // ---------------- COUNTER ----------------
 
