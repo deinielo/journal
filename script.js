@@ -2,7 +2,7 @@ console.log("JS OK");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, onSnapshot,
+  getFirestore, collection, addDoc, onSnapshot, getDocs,
   query, where, orderBy, deleteDoc, doc, updateDoc,
   serverTimestamp, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -26,23 +26,22 @@ let currentUser = null;
 let isPro = false;
 let unsubEntries = null;
 let unsubCounter = null;
+let unsubPatientEntries = null;
 
 // ---------------- UI ----------------
 const $ = (id) => document.getElementById(id);
 
-// FIX: los ids deben coincidir exactamente con el HTML
 const screens = {
-  auth:          $("auth"),
-  home:          $("home"),
-  diary:         $("diary"),
-  emotion:       $("emotion"),
-  sleep:         $("sleep"),
-  habits:        $("habits"),
-  feed:          $("patientDetail"),      // ← era $("feed"), no existe
-  professional:  $("professional"),
+  auth:         $("auth"),
+  home:         $("home"),
+  diary:        $("diary"),
+  emotion:      $("emotion"),
+  sleep:        $("sleep"),
+  habits:       $("habits"),
+  feed:         $("patientDetail"),
+  professional: $("professional"),
 };
 
-// FIX: el id real en el HTML es "patientEntriesList", no "entriesList"
 const entriesList = $("patientEntriesList");
 
 // ---------------- HELPERS ----------------
@@ -57,12 +56,12 @@ function show(name) {
   screens[name]?.classList.remove("hidden");
 }
 
-// ---------------- NAV (botones principales) ----------------
+// ---------------- NAV ----------------
 $("goDiary")?.addEventListener("click",   () => show("diary"));
 $("goEmotion")?.addEventListener("click", () => show("emotion"));
 $("goSleep")?.addEventListener("click",   () => show("sleep"));
 $("goHabits")?.addEventListener("click",  () => show("habits"));
-$("goFeed")?.addEventListener("click",    () => show("feed"));   // FIX: ahora "feed" sí existe en screens
+$("goFeed")?.addEventListener("click",    () => show("feed"));
 
 $("navHome")?.addEventListener("click",         () => show("home"));
 $("navDiary")?.addEventListener("click",        () => show("diary"));
@@ -70,14 +69,16 @@ $("navFeed")?.addEventListener("click",         () => show("feed"));
 $("navEmotion")?.addEventListener("click",      () => show("emotion"));
 $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
-$("navProfessional")?.addEventListener("click", () => show("professional")); // FIX: faltaba
+$("navProfessional")?.addEventListener("click", () => show("professional"));
 
-$("backHome1")?.addEventListener("click",           () => show("home"));
-$("backHome2")?.addEventListener("click",           () => show("home"));
-$("backHome3")?.addEventListener("click",           () => show("home"));
-$("backHome4")?.addEventListener("click",           () => show("home"));
-$("backToPatients")?.addEventListener("click",      () => show("home")); // FIX: id real del HTML
-$("backHomeProfessional")?.addEventListener("click",() => show("home")); // FIX: id real del HTML
+$("backHome1")?.addEventListener("click",            () => show("home"));
+$("backHome2")?.addEventListener("click",            () => show("home"));
+$("backHome3")?.addEventListener("click",            () => show("home"));
+$("backHome4")?.addEventListener("click",            () => show("home"));
+$("backHomeProfessional")?.addEventListener("click", () => show("home"));
+
+// "Volver" desde detalle de paciente → vuelve a la lista de pacientes
+$("backToPatients")?.addEventListener("click", () => show("professional"));
 
 // ---------------- AUTH ----------------
 $("btnGoogle")?.addEventListener("click", () => signInWithPopup(auth, provider));
@@ -114,7 +115,7 @@ $("btnSave")?.addEventListener("click", async () => {
   show("home");
 });
 
-// ---------------- SAVE EMOCIÓN (FIX: faltaba todo) ----------------
+// ---------------- SAVE EMOCIÓN ----------------
 let selectedMood      = null;
 let selectedIntensity = null;
 
@@ -148,7 +149,6 @@ $("saveEmotion")?.addEventListener("click", async () => {
     author:         currentUser.email,
     createdAt:      serverTimestamp()
   });
-  // reset
   document.querySelectorAll(".moodBtn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".intensityBtn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll("#emotion .check input").forEach(i => i.checked = false);
@@ -158,7 +158,7 @@ $("saveEmotion")?.addEventListener("click", async () => {
   show("home");
 });
 
-// ---------------- SAVE SUEÑO (FIX: faltaba todo) ----------------
+// ---------------- SAVE SUEÑO ----------------
 let selectedSleepMood  = null;
 let selectedSleepHours = null;
 
@@ -201,19 +201,17 @@ $("saveSleep")?.addEventListener("click", async () => {
   show("home");
 });
 
-// ---------------- SAVE HÁBITOS (FIX: faltaba todo) ----------------
+// ---------------- SAVE HÁBITOS ----------------
 const habitCheckboxes = document.querySelectorAll("#habits .check input[type=checkbox]");
 
-habitCheckboxes.forEach(cb => {
-  cb.addEventListener("change", updateHabitProgress);
-});
+habitCheckboxes.forEach(cb => cb.addEventListener("change", updateHabitProgress));
 
 function updateHabitProgress() {
   const total   = habitCheckboxes.length;
   const checked = [...habitCheckboxes].filter(c => c.checked).length;
   const pct     = Math.round((checked / total) * 100);
-  if ($("habitProgressText"))  $("habitProgressText").textContent  = `${checked}/${total}`;
-  if ($("habitProgressFill"))  $("habitProgressFill").style.width  = `${pct}%`;
+  if ($("habitProgressText")) $("habitProgressText").textContent = `${checked}/${total}`;
+  if ($("habitProgressFill")) $("habitProgressFill").style.width = `${pct}%`;
 }
 
 $("saveHabits")?.addEventListener("click", async () => {
@@ -233,26 +231,103 @@ $("saveHabits")?.addEventListener("click", async () => {
   show("home");
 });
 
+// ---------------- PACIENTES (solo pro) ----------------
+
+async function loadPatients() {
+  const list = $("patientsList");
+  if (!list) return;
+  list.innerHTML = "<p>Cargando pacientes...</p>";
+
+  const q    = query(collection(db, "users"), where("professionalId", "==", currentUser.uid));
+  const snap = await getDocs(q);
+
+  list.innerHTML = "";
+
+  if (snap.empty) {
+    list.innerHTML = "<p>No tienes pacientes asignados.</p>";
+    return;
+  }
+
+  snap.forEach(d => {
+    const p   = { uid: d.id, ...d.data() };
+    const div = document.createElement("div");
+    div.className = "patientItem";
+    div.innerHTML = `
+      <div class="patientEmail">${p.displayName || p.email}</div>
+      <div class="patientHint">${p.email}</div>
+    `;
+    div.addEventListener("click", () => openPatientDetail(p));
+    list.appendChild(div);
+  });
+}
+
+function openPatientDetail(patient) {
+  // Actualiza el título de la pantalla de detalle
+  const h2 = $("patientDetail")?.querySelector("h2");
+  if (h2) h2.textContent = `Entradas de ${patient.displayName || patient.email}`;
+
+  show("feed");
+
+  // Cancela suscripción anterior si existía
+  if (unsubPatientEntries) { unsubPatientEntries(); unsubPatientEntries = null; }
+
+  const q = query(
+    collection(db, "entries"),
+    where("uid", "==", patient.uid),
+    orderBy("createdAt", "desc")
+  );
+
+  unsubPatientEntries = onSnapshot(q, (snap) => {
+    if (!entriesList) return;
+    entriesList.innerHTML = "";
+
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>Este paciente no tiene entradas.</p>";
+      return;
+    }
+
+    snap.forEach(d => {
+      entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true));
+    });
+  });
+}
+
 // ---------------- AUTH STATE ----------------
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if (!user) { show("auth"); return; }
 
-  show("home");
-
   const userRef = doc(db, "users", user.uid);
   const snap    = await getDoc(userRef);
+
   if (!snap.exists()) {
-    await setDoc(userRef, { email: user.email, role: "user", createdAt: serverTimestamp() });
+    await setDoc(userRef, {
+      email:       user.email,
+      displayName: user.displayName || "",
+      role:        "user",
+      createdAt:   serverTimestamp()
+    });
   }
 
-  const roleSnap = await getDoc(userRef);
-  isPro = roleSnap.data()?.role === "pro";
+  const finalSnap = await getDoc(userRef);
+  isPro = finalSnap.data()?.role === "pro";
 
-  // Mostrar botón de profesionales solo si es pro
+  // Mostrar home DESPUÉS de saber el rol
+  show("home");
+
+  // Botón profesionales: solo visible si es pro
+  const navPro = $("navProfessional");
   if (isPro) {
-    $("navProfessional")?.classList.remove("hidden");
+    navPro?.classList.remove("hidden");
+    loadPatients(); // carga la lista de pacientes al iniciar sesión
+  } else {
+    navPro?.classList.add("hidden");
   }
+
+  // Recargar pacientes cada vez que se entra a la pantalla de profesionales
+  $("navProfessional")?.addEventListener("click", () => {
+    if (isPro) loadPatients();
+  });
 
   // ---------------- COUNTER ----------------
   if (unsubCounter) unsubCounter();
@@ -265,43 +340,27 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES ----------------
+  // ---------------- ENTRIES (feed del usuario, no del pro) ----------------
   if (unsubEntries) unsubEntries();
-  const base = collection(db, "entries");
-  const entriesQ = isPro
-    ? query(base, orderBy("createdAt", "desc"))
-    : query(base, where("uid", "==", user.uid), orderBy("createdAt", "desc"));
 
-  unsubEntries = onSnapshot(entriesQ, (snap) => {
-    if (!entriesList) return;
-    entriesList.innerHTML = "";
-    if (snap.empty) { entriesList.innerHTML = "<p>No hay entradas</p>"; return; }
+  // El pro ve sus pacientes desde la pantalla professional, no desde el feed
+  // El usuario normal sí ve sus propias entradas en el feed
+  if (!isPro) {
+    const entriesQ = query(
+      collection(db, "entries"),
+      where("uid", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
 
-    if (isPro) {
-      const grouped = {};
+    unsubEntries = onSnapshot(entriesQ, (snap) => {
+      if (!entriesList) return;
+      entriesList.innerHTML = "";
+      if (snap.empty) { entriesList.innerHTML = "<p>No hay entradas</p>"; return; }
       snap.forEach(d => {
-        const e   = { id: d.id, ...d.data() };
-        const key = e.author || "Desconocido";
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(e);
+        entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, false));
       });
-      Object.entries(grouped).forEach(([userEmail, items]) => {
-        const section = document.createElement("div");
-        section.className = "patientGroup";
-        section.innerHTML = `<h3>👤 ${userEmail}</h3>`;
-        items.forEach(e => {
-          section.appendChild(buildEntryCard(e, true));
-        });
-        entriesList.appendChild(section);
-      });
-      return;
-    }
-
-    snap.forEach(d => {
-      const e = { id: d.id, ...d.data() };
-      entriesList.appendChild(buildEntryCard(e, false));
     });
-  });
+  }
 });
 
 // ---------------- CARD BUILDER ----------------
@@ -312,20 +371,20 @@ function buildEntryCard(e, showActions) {
   let extra = "";
   if (e.type === "emotion") {
     extra = `
-      ${e.intensity  ? `<div>💢 Intensidad: ${e.intensity}</div>` : ""}
+      ${e.intensity           ? `<div>💢 Intensidad: ${e.intensity}</div>` : ""}
       ${e.bodySensations?.length ? `<div>🫀 ${e.bodySensations.join(", ")}</div>` : ""}
-      ${e.note        ? `<div>📝 ${e.note}</div>` : ""}
+      ${e.note                ? `<div>📝 ${e.note}</div>` : ""}
     `;
   } else if (e.type === "sleep") {
     extra = `
-      ${e.hours   ? `<div>⏰ ${e.hours}</div>` : ""}
-      ${e.details?.length ? `<div>💤 ${e.details.join(", ")}</div>` : ""}
-      ${e.note    ? `<div>📝 ${e.note}</div>` : ""}
+      ${e.hours            ? `<div>⏰ ${e.hours}</div>` : ""}
+      ${e.details?.length  ? `<div>💤 ${e.details.join(", ")}</div>` : ""}
+      ${e.note             ? `<div>📝 ${e.note}</div>` : ""}
     `;
   } else if (e.type === "habits") {
     extra = `
       ${e.habits?.length ? `<div>✅ ${e.habits.join(", ")}</div>` : ""}
-      ${e.note ? `<div>📝 ${e.note}</div>` : ""}
+      ${e.note           ? `<div>📝 ${e.note}</div>` : ""}
     `;
   } else {
     extra = `
