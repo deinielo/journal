@@ -84,11 +84,12 @@ function show(name) {
   screens[name]?.classList.remove("hidden");
 }
 
-patientDetail: $("patientDetail"),
+const patientDetail = $("patientDetail");
+const patientEntriesList = $("patientEntriesList");
 
 function openPatient(uid) {
   selectedPatientId = uid;
-  show("patientDetail")
+  show("patientDetail");
   loadPatientEntries(uid);
 }
 
@@ -104,29 +105,35 @@ function loadPatientEntries(uid) {
 
   unsubPatientEntries = onSnapshot(q, (snap) => {
 
-    entriesList.innerHTML = "";
+    patientEntriesList.innerHTML = "";
 
     if (snap.empty) {
-      entriesList.innerHTML = "<p>Este paciente no tiene entradas</p>";
+      patientEntriesList.innerHTML = "<p>Este paciente no tiene entradas</p>";
       return;
     }
 
-    snap.forEach(d => {
-      const e = d.data();
+    snap.forEach(docSnap => {
+      const e = docSnap.data();
 
       const div = document.createElement("div");
       div.className = "entry";
 
       div.innerHTML = `
-        <div class="date">📅 ${e.createdAt?.toDate?.().toLocaleString("es-ES") || ""}</div>
+        <div class="date">📅 ${formatDate(e.createdAt)}</div>
         <div><strong>${e.mood || "Entrada"}</strong></div>
-        <div>${e.moodText || ""}</div>
+        ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+        ${e.good ? `<div>✨ ${e.good}</div>` : ""}
+        ${e.hard ? `<div>💭 ${e.hard}</div>` : ""}
       `;
 
-      entriesList.appendChild(div);
+      patientEntriesList.appendChild(div);
     });
   });
 }
+
+$("backToPatients")?.addEventListener("click", () => {
+  show("professional");
+});
 
 // ---------------- NAV ----------------
 
