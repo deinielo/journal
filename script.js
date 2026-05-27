@@ -40,6 +40,7 @@ const screens = {
   habits:       $("habits"),
   feed:         $("patientDetail"),
   professional: $("professional"),
+  profile:      $("profile"),
 };
 
 const entriesList = $("patientEntriesList");
@@ -69,6 +70,7 @@ $("navFeed")?.addEventListener("click",         () => show("feed"));
 $("navEmotion")?.addEventListener("click",      () => show("emotion"));
 $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
+$("navProfile")?.addEventListener("click",      () => { loadProfileScreen(); show("profile"); });
 $("navProfessional")?.addEventListener("click", () => show("professional"));
 
 $("backHome1")?.addEventListener("click",            () => show("home"));
@@ -76,9 +78,8 @@ $("backHome2")?.addEventListener("click",            () => show("home"));
 $("backHome3")?.addEventListener("click",            () => show("home"));
 $("backHome4")?.addEventListener("click",            () => show("home"));
 $("backHomeProfessional")?.addEventListener("click", () => show("home"));
-
-// "Volver" desde detalle de paciente → vuelve a la lista de pacientes
-$("backToPatients")?.addEventListener("click", () => show("home"));
+$("backHomeProfile")?.addEventListener("click",      () => show("home"));
+$("backToPatients")?.addEventListener("click",       () => show("home"));
 
 // ---------------- AUTH ----------------
 $("btnGoogle")?.addEventListener("click", () => signInWithPopup(auth, provider));
@@ -95,6 +96,50 @@ $("btnEmail")?.addEventListener("click", async () => {
 });
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
+
+// ---------------- PERFIL ----------------
+
+function loadProfileScreen() {
+  if (!currentUser) return;
+
+  // Muestra el email debajo del avatar
+  const emailEl = $("profileEmail");
+  if (emailEl) emailEl.textContent = currentUser.email;
+
+  // Carga el displayName actual desde Firestore
+  const userRef = doc(db, "users", currentUser.uid);
+  getDoc(userRef).then(snap => {
+    const name = snap.data()?.displayName || "";
+    const input = $("profileName");
+    if (input) input.value = name;
+
+    // Actualiza el avatar con la inicial del nombre si existe
+    const avatar = $("profileAvatar");
+    if (avatar) avatar.textContent = name ? name[0].toUpperCase() : "👤";
+  });
+
+  // Oculta el mensaje de guardado por si quedó visible
+  $("profileSavedMsg")?.classList.add("hidden");
+}
+
+$("saveProfile")?.addEventListener("click", async () => {
+  if (!currentUser) return;
+
+  const name = $("profileName")?.value?.trim();
+  if (!name) return;
+
+  const userRef = doc(db, "users", currentUser.uid);
+  await updateDoc(userRef, { displayName: name });
+
+  // Actualiza el avatar en tiempo real
+  const avatar = $("profileAvatar");
+  if (avatar) avatar.textContent = name[0].toUpperCase();
+
+  // Muestra confirmación
+  const msg = $("profileSavedMsg");
+  msg?.classList.remove("hidden");
+  setTimeout(() => msg?.classList.add("hidden"), 2500);
+});
 
 // ---------------- SAVE DIARY ----------------
 $("btnSave")?.addEventListener("click", async () => {
@@ -262,13 +307,11 @@ async function loadPatients() {
 }
 
 function openPatientDetail(patient) {
-  // Actualiza el título de la pantalla de detalle
   const h2 = $("patientDetail")?.querySelector("h2");
   if (h2) h2.textContent = `Entradas de ${patient.displayName || patient.email}`;
 
   show("feed");
 
-  // Cancela suscripción anterior si existía
   if (unsubPatientEntries) { unsubPatientEntries(); unsubPatientEntries = null; }
 
   const q = query(
@@ -312,19 +355,18 @@ onAuthStateChanged(auth, async (user) => {
   const finalSnap = await getDoc(userRef);
   isPro = finalSnap.data()?.role === "pro";
 
-  // Mostrar home DESPUÉS de saber el rol
   show("home");
 
   // Botón profesionales: solo visible si es pro
   const navPro = $("navProfessional");
   if (isPro) {
     navPro?.classList.remove("hidden");
-    loadPatients(); // carga la lista de pacientes al iniciar sesión
+    loadPatients();
   } else {
     navPro?.classList.add("hidden");
   }
 
-  // Recargar pacientes cada vez que se entra a la pantalla de profesionales
+  // Recargar pacientes al entrar a la pantalla
   $("navProfessional")?.addEventListener("click", () => {
     if (isPro) loadPatients();
   });
@@ -340,11 +382,9 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.textContent = snap.size;
   });
 
-  // ---------------- ENTRIES (feed del usuario, no del pro) ----------------
+  // ---------------- ENTRIES ----------------
   if (unsubEntries) unsubEntries();
 
-  // El pro ve sus pacientes desde la pantalla professional, no desde el feed
-  // El usuario normal sí ve sus propias entradas en el feed
   if (!isPro) {
     const entriesQ = query(
       collection(db, "entries"),
@@ -368,21 +408,20 @@ function buildEntryCard(e, showActions) {
   const div = document.createElement("div");
   div.className = "entry";
 
-  // Mostrar acciones si es pro O si la entrada es del usuario actual
   const canEdit = isPro || (currentUser && e.uid === currentUser.uid);
 
   let extra = "";
   if (e.type === "emotion") {
     extra = `
-      ${e.intensity           ? `<div>💢 Intensidad: ${e.intensity}</div>` : ""}
+      ${e.intensity              ? `<div>💢 Intensidad: ${e.intensity}</div>` : ""}
       ${e.bodySensations?.length ? `<div>🫀 ${e.bodySensations.join(", ")}</div>` : ""}
-      ${e.note                ? `<div>📝 ${e.note}</div>` : ""}
+      ${e.note                   ? `<div>📝 ${e.note}</div>` : ""}
     `;
   } else if (e.type === "sleep") {
     extra = `
-      ${e.hours            ? `<div>⏰ ${e.hours}</div>` : ""}
-      ${e.details?.length  ? `<div>💤 ${e.details.join(", ")}</div>` : ""}
-      ${e.note             ? `<div>📝 ${e.note}</div>` : ""}
+      ${e.hours           ? `<div>⏰ ${e.hours}</div>` : ""}
+      ${e.details?.length ? `<div>💤 ${e.details.join(", ")}</div>` : ""}
+      ${e.note            ? `<div>📝 ${e.note}</div>` : ""}
     `;
   } else if (e.type === "habits") {
     extra = `
