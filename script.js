@@ -357,7 +357,7 @@ onAuthStateChanged(auth, async (user) => {
       entriesList.innerHTML = "";
       if (snap.empty) { entriesList.innerHTML = "<p>No hay entradas</p>"; return; }
       snap.forEach(d => {
-        entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, false));
+        entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true));
       });
     });
   }
@@ -367,6 +367,9 @@ onAuthStateChanged(auth, async (user) => {
 function buildEntryCard(e, showActions) {
   const div = document.createElement("div");
   div.className = "entry";
+
+  // Mostrar acciones si es pro O si la entrada es del usuario actual
+  const canEdit = isPro || (currentUser && e.uid === currentUser.uid);
 
   let extra = "";
   if (e.type === "emotion") {
@@ -398,7 +401,7 @@ function buildEntryCard(e, showActions) {
     <div class="date">📅 ${formatDate(e.createdAt)}</div>
     <div><strong>${e.mood || e.sleepMood || e.type || "Entrada"}</strong></div>
     ${extra}
-    ${showActions ? `
+    ${canEdit ? `
       <div class="entryActions">
         <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
         <button onclick="deleteEntry('${e.id}')">🗑️</button>
