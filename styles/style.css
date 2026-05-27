@@ -569,3 +569,82 @@ button:active,
   opacity: 0.6;
   margin-top: 4px;
 }
+/* ---------------- PERFIL ---------------- */
+
+#profile {
+  gap: 14px;
+}
+
+#profile label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #444;
+}
+
+#profile input[type="text"] {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  width: 100%;
+  font-size: 16px;
+  background: white;
+}
+
+#profile input[type="text"]:focus {
+  outline: none;
+  border-color: #00896E;
+  box-shadow: 0 0 0 3px rgba(0,137,110,0.1);
+}
+
+.profileCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background: white;
+  border-radius: 18px;
+  border: 2px solid rgba(0,0,0,0.06);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+}
+
+.profileAvatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00896E, #00c896);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: white;
+  font-weight: 800;
+}
+
+.profileEmail {
+  font-size: 13px;
+  color: #888;
+}
+
+#saveProfile {
+  background: #00896E;
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px;
+  border-radius: 14px;
+}
+
+#saveProfile:hover {
+  background: #007a60;
+}
+
+.successMsg {
+  text-align: center;
+  padding: 10px;
+  background: #e6fff5;
+  border-radius: 10px;
+  color: #00896E;
+  font-weight: 600;
+  font-size: 14px;
+}
