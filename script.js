@@ -78,7 +78,7 @@ $("backHome4")?.addEventListener("click",            () => show("home"));
 $("backHomeProfessional")?.addEventListener("click", () => show("home"));
 
 // "Volver" desde detalle de paciente → vuelve a la lista de pacientes
-$("backToPatients")?.addEventListener("click", () => show("professional"));
+$("backToPatients")?.addEventListener("click", () => show("home"));
 
 // ---------------- AUTH ----------------
 $("btnGoogle")?.addEventListener("click", () => signInWithPopup(auth, provider));
