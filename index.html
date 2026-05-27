@@ -7,12 +7,12 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-512.png">
   <meta name="theme-color" content="#111111">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mi diario</title>
 
-  <link rel="stylesheet" href="styles/style.css?v=2">
+  <link rel="stylesheet" href="styles/style.css?v=3">
 </head>
 
 <body>
@@ -48,10 +48,10 @@
       <!-- HOME -->
       <div id="home" class="screen hidden">
 
-<div id="contador-wrapper">
-  <div id="contador-label">Registros guardados</div>
-  <div id="contador-registros">0</div>
-</div>
+        <div id="contador-wrapper">
+          <div id="contador-label">Registros guardados</div>
+          <div id="contador-registros">0</div>
+        </div>
 
         <button id="goDiary">✍️ Escribir diario</button>
         <button id="goEmotion">😊 Registrar emoción</button>
@@ -62,21 +62,40 @@
         <button id="btnLogout" class="danger">Cerrar sesión</button>
       </div>
 
-      <!-- FEED -->
-<div id="patientDetail" class="screen hidden">
-  <button id="backToPatients">← Volver</button>
-  <h2>Entradas del paciente</h2>
-  <div id="patientEntriesList"></div>
-</div>
+      <!-- PERFIL -->
+      <div id="profile" class="screen hidden">
+        <button id="backHomeProfile">← Volver</button>
 
-<!-- PROFESIONALES -->
-<div id="professional" class="screen hidden">
-  <button id="backHomeProfessional">← Volver</button>
+        <h2>👤 Mi perfil</h2>
 
-  <h2>👨‍⚕️ Pacientes</h2>
+        <div class="profileCard">
+          <div class="profileAvatar" id="profileAvatar">👤</div>
+          <div class="profileEmail" id="profileEmail"></div>
+        </div>
 
-  <div id="patientsList"></div>
-</div>
+        <label for="profileName">¿Cómo te llamas?</label>
+        <input type="text" id="profileName" placeholder="Tu nombre o apodo..." maxlength="40" />
+
+        <button id="saveProfile">💾 Guardar nombre</button>
+
+        <div id="profileSavedMsg" class="successMsg hidden">✅ ¡Nombre guardado!</div>
+      </div>
+
+      <!-- FEED / ENTRADAS -->
+      <div id="patientDetail" class="screen hidden">
+        <button id="backToPatients">← Volver</button>
+        <h2>Mis entradas</h2>
+        <div id="patientEntriesList"></div>
+      </div>
+
+      <!-- PROFESIONALES -->
+      <div id="professional" class="screen hidden">
+        <button id="backHomeProfessional">← Volver</button>
+
+        <h2>👨‍⚕️ Pacientes</h2>
+
+        <div id="patientsList"></div>
+      </div>
 
       <!-- DIARIO -->
       <div id="diary" class="screen hidden">
@@ -89,18 +108,18 @@
           <option value="😡">😡 Enfadado</option>
           <option value="😴">😴 Cansado</option>
         </select>
-        <h1> ¿Cómo ha ido hoy? </h1>
-        <h2> Puedes escribir lo que sea </h2>
+        <h1>¿Cómo ha ido hoy?</h1>
+        <h2>Puedes escribir lo que sea</h2>
         <textarea id="entryMood" placeholder="Escribe cómo te sientes..."></textarea>
 
         <h1>¿Qué ha sido lo mejor de hoy?</h1>
-        <h2> Aunque haya sido algo pequeño </h2>
+        <h2>Aunque haya sido algo pequeño</h2>
         <textarea id="entryGood" placeholder="Lo mejor de hoy ha sido..."></textarea>
 
-        <h1> ¿Qué ha sido difícil? </h1>
-        <h2> No pasa nada por tener días difíciles </h2>
+        <h1>¿Qué ha sido difícil?</h1>
+        <h2>No pasa nada por tener días difíciles</h2>
         <textarea id="entryHard" placeholder="Lo más difícil ha sido..."></textarea>
-        
+
         <button id="btnSave">Guardar</button>
       </div>
 
@@ -236,6 +255,10 @@
       <span class="icon">🎯</span>
       <span>Hábitos</span>
     </button>
+    <button id="navProfile">
+      <span class="icon">👤</span>
+      <span>Perfil</span>
+    </button>
     <button id="navProfessional" class="hidden">
       <span class="icon">👨‍⚕️</span>
       <span>Pacientes</span>
@@ -244,7 +267,7 @@
 
 </div>
 
-<script type="module" src="./script.js?v=2"></script>
+<script type="module" src="./script.js?v=3"></script>
 
 </body>
 </html>
