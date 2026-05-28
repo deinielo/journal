@@ -27,6 +27,7 @@ let isPro = false;
 let unsubEntries = null;
 let unsubCounter = null;
 let unsubPatientEntries = null;
+let currentScreen = "home";
 
 // ---------------- UI ----------------
 const $ = (id) => document.getElementById(id);
@@ -45,6 +46,9 @@ const screens = {
 
 const entriesList = $("patientEntriesList");
 
+// Botones del footer y su pantalla asociada
+const footerButtons = document.querySelectorAll(".appFooter button[data-screen]");
+
 // ---------------- HELPERS ----------------
 function formatDate(ts) {
   if (!ts) return "Sin fecha";
@@ -55,6 +59,23 @@ function formatDate(ts) {
 function show(name) {
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
   screens[name]?.classList.remove("hidden");
+  currentScreen = name;
+  updateFooter(name);
+}
+
+// Oculta el botón del footer que corresponde a la pantalla actual
+function updateFooter(screenName) {
+  footerButtons.forEach(btn => {
+    const btnScreen = btn.dataset.screen;
+    // Ocultar si es el botón de la pantalla actual (excepto professional que ya gestiona su visibilidad)
+    if (btnScreen === screenName) {
+      btn.classList.add("footerHidden");
+    } else {
+      btn.classList.remove("footerHidden");
+    }
+  });
+  // Asegurar que professional sigue oculto si no es pro
+  if (!isPro) $("navProfessional")?.classList.add("hidden");
 }
 
 // ---------------- NAV ----------------
@@ -71,7 +92,7 @@ $("navEmotion")?.addEventListener("click",      () => show("emotion"));
 $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
 $("navProfile")?.addEventListener("click",      () => { loadProfileScreen(); show("profile"); });
-$("navProfessional")?.addEventListener("click", () => show("professional"));
+$("navProfessional")?.addEventListener("click", () => { if (isPro) loadPatients(); show("professional"); });
 
 $("backHome1")?.addEventListener("click",            () => show("home"));
 $("backHome2")?.addEventListener("click",            () => show("home"));
@@ -98,27 +119,22 @@ $("btnEmail")?.addEventListener("click", async () => {
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
 // ---------------- PERFIL ----------------
-
 function loadProfileScreen() {
   if (!currentUser) return;
 
-  // Muestra el email debajo del avatar
   const emailEl = $("profileEmail");
   if (emailEl) emailEl.textContent = currentUser.email;
 
-  // Carga el displayName actual desde Firestore
   const userRef = doc(db, "users", currentUser.uid);
   getDoc(userRef).then(snap => {
     const name = snap.data()?.displayName || "";
     const input = $("profileName");
     if (input) input.value = name;
 
-    // Actualiza el avatar con la inicial del nombre si existe
     const avatar = $("profileAvatar");
     if (avatar) avatar.textContent = name ? name[0].toUpperCase() : "👤";
   });
 
-  // Oculta el mensaje de guardado por si quedó visible
   $("profileSavedMsg")?.classList.add("hidden");
 }
 
@@ -131,11 +147,13 @@ $("saveProfile")?.addEventListener("click", async () => {
   const userRef = doc(db, "users", currentUser.uid);
   await updateDoc(userRef, { displayName: name });
 
-  // Actualiza el avatar en tiempo real
   const avatar = $("profileAvatar");
   if (avatar) avatar.textContent = name[0].toUpperCase();
 
-  // Muestra confirmación
+  // Actualiza también el botón del header
+  const headerBtn = $("navProfile");
+  if (headerBtn) headerBtn.textContent = name[0].toUpperCase();
+
   const msg = $("profileSavedMsg");
   msg?.classList.remove("hidden");
   setTimeout(() => msg?.classList.add("hidden"), 2500);
@@ -277,7 +295,6 @@ $("saveHabits")?.addEventListener("click", async () => {
 });
 
 // ---------------- PACIENTES (solo pro) ----------------
-
 async function loadPatients() {
   const list = $("patientsList");
   if (!list) return;
@@ -323,12 +340,10 @@ function openPatientDetail(patient) {
   unsubPatientEntries = onSnapshot(q, (snap) => {
     if (!entriesList) return;
     entriesList.innerHTML = "";
-
     if (snap.empty) {
       entriesList.innerHTML = "<p>Este paciente no tiene entradas.</p>";
       return;
     }
-
     snap.forEach(d => {
       entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true));
     });
@@ -353,23 +368,26 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   const finalSnap = await getDoc(userRef);
-  isPro = finalSnap.data()?.role === "pro";
+  const userData  = finalSnap.data();
+  isPro = userData?.role === "pro";
 
   show("home");
 
-  // Botón profesionales: solo visible si es pro
-  const navPro = $("navProfessional");
-  if (isPro) {
-    navPro?.classList.remove("hidden");
-    loadPatients();
-  } else {
-    navPro?.classList.add("hidden");
+  // Mostrar botón de perfil en header con inicial si tiene nombre
+  const headerBtn = $("navProfile");
+  if (headerBtn) {
+    headerBtn.classList.remove("hidden");
+    const name = userData?.displayName || "";
+    headerBtn.textContent = name ? name[0].toUpperCase() : "👤";
   }
 
-  // Recargar pacientes al entrar a la pantalla
-  $("navProfessional")?.addEventListener("click", () => {
-    if (isPro) loadPatients();
-  });
+  // Botón profesionales: solo visible si es pro
+  if (isPro) {
+    $("navProfessional")?.classList.remove("hidden");
+    loadPatients();
+  } else {
+    $("navProfessional")?.classList.add("hidden");
+  }
 
   // ---------------- COUNTER ----------------
   if (unsubCounter) unsubCounter();
