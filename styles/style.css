@@ -570,125 +570,122 @@ button:active,
   margin-top: 4px;
 }
 /* ---------------- PERFIL ---------------- */
-
 #profile { gap: 14px; }
-
-#profile label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #444;
-}
-
+#profile label { font-size: 14px; font-weight: 600; color: #444; }
 #profile input[type="text"] {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #ccc;
-  width: 100%;
-  font-size: 16px;
-  background: white;
+  padding: 12px; border-radius: 12px; border: 1px solid #ccc;
+  width: 100%; font-size: 16px; background: white;
+}
+#profile input[type="text"]:focus {
+  outline: none; border-color: #00896E;
+  box-shadow: 0 0 0 3px rgba(0,137,110,0.1);
+}
+.profileCard {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 20px; background: white; border-radius: 18px;
+  border: 2px solid rgba(0,0,0,0.06); box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+}
+.profileAvatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, #00896E, #00c896);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: white; font-weight: 800;
+}
+.profileEmail { font-size: 13px; color: #888; }
+#saveProfile {
+  background: #00896E; color: white; font-weight: 700;
+  font-size: 15px; padding: 14px; border-radius: 14px;
+}
+#saveProfile:hover { background: #007a60; }
+.successMsg {
+  text-align: center; padding: 10px; background: #e6fff5;
+  border-radius: 10px; color: #00896E; font-weight: 600; font-size: 14px;
 }
 
-#profile input[type="text"]:focus {
+/* ---------------- HEADER ---------------- */
+.app { display: flex; flex-direction: column; }
+.appHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 0; flex-shrink: 0;
+}
+.appHeader h1 { margin: 0; font-size: 22px; }
+.headerProfileBtn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg, #00896E, #00c896);
+  color: white; font-size: 18px; font-weight: 800; border: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,137,110,0.3);
+}
+.headerProfileBtn:hover { transform: scale(1.08); }
+
+/* ---------------- FOOTER: ocultar botón activo ---------------- */
+.appFooter button.footerHidden { display: none !important; }
+
+/* ---------------- EDICIÓN INLINE ---------------- */
+.editFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.editFieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.editFieldTextarea {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid #00896E;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  width: 100%;
+  background: #f7fffc;
   outline: none;
+  transition: 0.2s;
+}
+
+.editFieldTextarea:focus {
   border-color: #00896E;
   box-shadow: 0 0 0 3px rgba(0,137,110,0.1);
 }
 
-.profileCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px;
-  background: white;
-  border-radius: 18px;
-  border: 2px solid rgba(0,0,0,0.06);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
-}
-
-.profileAvatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00896E, #00c896);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  color: white;
-  font-weight: 800;
-}
-
-.profileEmail {
-  font-size: 13px;
-  color: #888;
-}
-
-#saveProfile {
+.saveEditBtn {
   background: #00896E;
   color: white;
   font-weight: 700;
-  font-size: 15px;
-  padding: 14px;
-  border-radius: 14px;
-}
-
-#saveProfile:hover { background: #007a60; }
-
-.successMsg {
-  text-align: center;
-  padding: 10px;
-  background: #e6fff5;
+  font-size: 13px;
+  padding: 8px 14px;
   border-radius: 10px;
-  color: #00896E;
+}
+
+.saveEditBtn:hover { background: #007a60; }
+
+.cancelEditBtn {
+  background: #f1f1f1;
+  color: #555;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 10px;
+}
+
+.inlineEditBtn {
+  background: #e6f0ff;
+  color: #1a4fff;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
 }
 
-/* ---------------- HEADER ---------------- */
-
-.app {
-  display: flex;
-  flex-direction: column;
-}
-
-.appHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px 0;
-  flex-shrink: 0;
-}
-
-.appHeader h1 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.headerProfileBtn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00896E, #00c896);
-  color: white;
-  font-size: 18px;
-  font-weight: 800;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: 0.2s;
-  box-shadow: 0 2px 8px rgba(0,137,110,0.3);
-}
-
-.headerProfileBtn:hover {
-  transform: scale(1.08);
-}
-
-/* ---------------- FOOTER: ocultar botón activo ---------------- */
-
-.appFooter button.footerHidden {
-  display: none !important;
+.inlineDeleteBtn {
+  background: #ffe6e6;
+  color: #cc0000;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
 }
