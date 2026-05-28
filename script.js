@@ -27,7 +27,6 @@ let isPro = false;
 let unsubEntries = null;
 let unsubCounter = null;
 let unsubPatientEntries = null;
-let currentScreen = "home";
 
 // ---------------- UI ----------------
 const $ = (id) => document.getElementById(id);
@@ -41,11 +40,9 @@ const screens = {
   habits:       $("habits"),
   feed:         $("patientDetail"),
   professional: $("professional"),
-  profile:      $("profile"),
 };
 
 const entriesList = $("patientEntriesList");
-const footerButtons = document.querySelectorAll(".appFooter button[data-screen]");
 
 // ---------------- HELPERS ----------------
 function formatDate(ts) {
@@ -54,18 +51,26 @@ function formatDate(ts) {
   catch { return "Fecha inválida"; }
 }
 
+// ---------------- TOAST ----------------
+function showToast(msg) {
+  const existing = document.querySelector(".toast");
+  if (existing) existing.remove();
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = msg;
+  document.querySelector(".phone")?.appendChild(toast);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add("show"));
+  });
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
 function show(name) {
   Object.values(screens).forEach(s => s?.classList.add("hidden"));
   screens[name]?.classList.remove("hidden");
-  currentScreen = name;
-  updateFooter(name);
-}
-
-function updateFooter(screenName) {
-  footerButtons.forEach(btn => {
-    btn.classList.toggle("footerHidden", btn.dataset.screen === screenName);
-  });
-  if (!isPro) $("navProfessional")?.classList.add("hidden");
 }
 
 // ---------------- NAV ----------------
@@ -81,16 +86,16 @@ $("navFeed")?.addEventListener("click",         () => show("feed"));
 $("navEmotion")?.addEventListener("click",      () => show("emotion"));
 $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
-$("navProfile")?.addEventListener("click",      () => { loadProfileScreen(); show("profile"); });
-$("navProfessional")?.addEventListener("click", () => { if (isPro) loadPatients(); show("professional"); });
+$("navProfessional")?.addEventListener("click", () => show("professional"));
 
 $("backHome1")?.addEventListener("click",            () => show("home"));
 $("backHome2")?.addEventListener("click",            () => show("home"));
 $("backHome3")?.addEventListener("click",            () => show("home"));
 $("backHome4")?.addEventListener("click",            () => show("home"));
 $("backHomeProfessional")?.addEventListener("click", () => show("home"));
-$("backHomeProfile")?.addEventListener("click",      () => show("home"));
-$("backToPatients")?.addEventListener("click",       () => show("home"));
+
+// "Volver" desde detalle de paciente → vuelve a la lista de pacientes
+$("backToPatients")?.addEventListener("click", () => show("professional"));
 
 // ---------------- AUTH ----------------
 $("btnGoogle")?.addEventListener("click", () => signInWithPopup(auth, provider));
@@ -108,38 +113,6 @@ $("btnEmail")?.addEventListener("click", async () => {
 
 $("btnLogout")?.addEventListener("click", () => signOut(auth));
 
-// ---------------- PERFIL ----------------
-function loadProfileScreen() {
-  if (!currentUser) return;
-  const emailEl = $("profileEmail");
-  if (emailEl) emailEl.textContent = currentUser.email;
-
-  const userRef = doc(db, "users", currentUser.uid);
-  getDoc(userRef).then(snap => {
-    const name = snap.data()?.displayName || "";
-    const input = $("profileName");
-    if (input) input.value = name;
-    const avatar = $("profileAvatar");
-    if (avatar) avatar.textContent = name ? name[0].toUpperCase() : "👤";
-  });
-  $("profileSavedMsg")?.classList.add("hidden");
-}
-
-$("saveProfile")?.addEventListener("click", async () => {
-  if (!currentUser) return;
-  const name = $("profileName")?.value?.trim();
-  if (!name) return;
-  const userRef = doc(db, "users", currentUser.uid);
-  await updateDoc(userRef, { displayName: name });
-  const avatar = $("profileAvatar");
-  if (avatar) avatar.textContent = name[0].toUpperCase();
-  const headerBtn = $("navProfile");
-  if (headerBtn) headerBtn.textContent = name[0].toUpperCase();
-  const msg = $("profileSavedMsg");
-  msg?.classList.remove("hidden");
-  setTimeout(() => msg?.classList.add("hidden"), 2500);
-});
-
 // ---------------- SAVE DIARY ----------------
 $("btnSave")?.addEventListener("click", async () => {
   if (!currentUser) return;
@@ -156,6 +129,7 @@ $("btnSave")?.addEventListener("click", async () => {
   $("entryMood").value = "";
   $("entryGood").value = "";
   $("entryHard").value = "";
+  showToast("✅ ¡Diario guardado!");
   show("home");
 });
 
@@ -184,15 +158,22 @@ $("saveEmotion")?.addEventListener("click", async () => {
   const bodySensations = [...document.querySelectorAll("#emotion .check input:checked")]
     .map(i => i.value);
   await addDoc(collection(db, "entries"), {
-    type: "emotion", mood: selectedMood, intensity: selectedIntensity,
-    bodySensations, note: $("bodyNote")?.value?.trim(),
-    uid: currentUser.uid, author: currentUser.email, createdAt: serverTimestamp()
+    type:           "emotion",
+    mood:           selectedMood,
+    intensity:      selectedIntensity,
+    bodySensations,
+    note:           $("bodyNote")?.value?.trim(),
+    uid:            currentUser.uid,
+    author:         currentUser.email,
+    createdAt:      serverTimestamp()
   });
   document.querySelectorAll(".moodBtn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".intensityBtn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll("#emotion .check input").forEach(i => i.checked = false);
   if ($("bodyNote")) $("bodyNote").value = "";
-  selectedMood = null; selectedIntensity = null;
+  selectedMood = null;
+  selectedIntensity = null;
+  showToast("✅ ¡Emoción guardada!");
   show("home");
 });
 
@@ -218,22 +199,31 @@ document.querySelectorAll(".sleepHoursBtn").forEach(btn => {
 
 $("saveSleep")?.addEventListener("click", async () => {
   if (!currentUser) return;
-  const details = [...document.querySelectorAll("#sleep .check input:checked")].map(i => i.value);
+  const details = [...document.querySelectorAll("#sleep .check input:checked")]
+    .map(i => i.value);
   await addDoc(collection(db, "entries"), {
-    type: "sleep", sleepMood: selectedSleepMood, hours: selectedSleepHours,
-    details, note: $("sleepNote")?.value?.trim(),
-    uid: currentUser.uid, author: currentUser.email, createdAt: serverTimestamp()
+    type:      "sleep",
+    sleepMood: selectedSleepMood,
+    hours:     selectedSleepHours,
+    details,
+    note:      $("sleepNote")?.value?.trim(),
+    uid:       currentUser.uid,
+    author:    currentUser.email,
+    createdAt: serverTimestamp()
   });
   document.querySelectorAll(".sleepMoodBtn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".sleepHoursBtn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll("#sleep .check input").forEach(i => i.checked = false);
   if ($("sleepNote")) $("sleepNote").value = "";
-  selectedSleepMood = null; selectedSleepHours = null;
+  selectedSleepMood = null;
+  selectedSleepHours = null;
+  showToast("✅ ¡Sueño guardado!");
   show("home");
 });
 
 // ---------------- SAVE HÁBITOS ----------------
 const habitCheckboxes = document.querySelectorAll("#habits .check input[type=checkbox]");
+
 habitCheckboxes.forEach(cb => cb.addEventListener("change", updateHabitProgress));
 
 function updateHabitProgress() {
@@ -248,24 +238,37 @@ $("saveHabits")?.addEventListener("click", async () => {
   if (!currentUser) return;
   const habits = [...habitCheckboxes].filter(c => c.checked).map(c => c.value);
   await addDoc(collection(db, "entries"), {
-    type: "habits", habits, note: $("habitsNote")?.value?.trim(),
-    uid: currentUser.uid, author: currentUser.email, createdAt: serverTimestamp()
+    type:      "habits",
+    habits,
+    note:      $("habitsNote")?.value?.trim(),
+    uid:       currentUser.uid,
+    author:    currentUser.email,
+    createdAt: serverTimestamp()
   });
   habitCheckboxes.forEach(c => c.checked = false);
   if ($("habitsNote")) $("habitsNote").value = "";
   updateHabitProgress();
+  showToast("✅ ¡Hábitos guardados!");
   show("home");
 });
 
 // ---------------- PACIENTES (solo pro) ----------------
+
 async function loadPatients() {
   const list = $("patientsList");
   if (!list) return;
   list.innerHTML = "<p>Cargando pacientes...</p>";
+
   const q    = query(collection(db, "users"), where("professionalId", "==", currentUser.uid));
   const snap = await getDocs(q);
+
   list.innerHTML = "";
-  if (snap.empty) { list.innerHTML = "<p>No tienes pacientes asignados.</p>"; return; }
+
+  if (snap.empty) {
+    list.innerHTML = "<p>No tienes pacientes asignados.</p>";
+    return;
+  }
+
   snap.forEach(d => {
     const p   = { uid: d.id, ...d.data() };
     const div = document.createElement("div");
@@ -280,16 +283,33 @@ async function loadPatients() {
 }
 
 function openPatientDetail(patient) {
+  // Actualiza el título de la pantalla de detalle
   const h2 = $("patientDetail")?.querySelector("h2");
   if (h2) h2.textContent = `Entradas de ${patient.displayName || patient.email}`;
+
   show("feed");
+
+  // Cancela suscripción anterior si existía
   if (unsubPatientEntries) { unsubPatientEntries(); unsubPatientEntries = null; }
-  const q = query(collection(db, "entries"), where("uid", "==", patient.uid), orderBy("createdAt", "desc"));
+
+  const q = query(
+    collection(db, "entries"),
+    where("uid", "==", patient.uid),
+    orderBy("createdAt", "desc")
+  );
+
   unsubPatientEntries = onSnapshot(q, (snap) => {
     if (!entriesList) return;
     entriesList.innerHTML = "";
-    if (snap.empty) { entriesList.innerHTML = "<p>Este paciente no tiene entradas.</p>"; return; }
-    snap.forEach(d => entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true)));
+
+    if (snap.empty) {
+      entriesList.innerHTML = "<p>Este paciente no tiene entradas.</p>";
+      return;
+    }
+
+    snap.forEach(d => {
+      entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true));
+    });
   });
 }
 
@@ -300,50 +320,66 @@ onAuthStateChanged(auth, async (user) => {
 
   const userRef = doc(db, "users", user.uid);
   const snap    = await getDoc(userRef);
+
   if (!snap.exists()) {
     await setDoc(userRef, {
-      email: user.email, displayName: user.displayName || "",
-      role: "user", createdAt: serverTimestamp()
+      email:       user.email,
+      displayName: user.displayName || "",
+      role:        "user",
+      createdAt:   serverTimestamp()
     });
   }
 
   const finalSnap = await getDoc(userRef);
-  const userData  = finalSnap.data();
-  isPro = userData?.role === "pro";
+  isPro = finalSnap.data()?.role === "pro";
 
+  // Mostrar home DESPUÉS de saber el rol
   show("home");
 
-  const headerBtn = $("navProfile");
-  if (headerBtn) {
-    headerBtn.classList.remove("hidden");
-    const name = userData?.displayName || "";
-    headerBtn.textContent = name ? name[0].toUpperCase() : "👤";
-  }
-
+  // Botón profesionales: solo visible si es pro
+  const navPro = $("navProfessional");
   if (isPro) {
-    $("navProfessional")?.classList.remove("hidden");
-    loadPatients();
+    navPro?.classList.remove("hidden");
+    loadPatients(); // carga la lista de pacientes al iniciar sesión
   } else {
-    $("navProfessional")?.classList.add("hidden");
+    navPro?.classList.add("hidden");
   }
 
+  // Recargar pacientes cada vez que se entra a la pantalla de profesionales
+  $("navProfessional")?.addEventListener("click", () => {
+    if (isPro) loadPatients();
+  });
+
+  // ---------------- COUNTER ----------------
   if (unsubCounter) unsubCounter();
   const counterQ = isPro
     ? collection(db, "entries")
     : query(collection(db, "entries"), where("uid", "==", user.uid));
+
   unsubCounter = onSnapshot(counterQ, (snap) => {
     const el = $("contador-registros");
     if (el) el.textContent = snap.size;
   });
 
+  // ---------------- ENTRIES (feed del usuario, no del pro) ----------------
   if (unsubEntries) unsubEntries();
+
+  // El pro ve sus pacientes desde la pantalla professional, no desde el feed
+  // El usuario normal sí ve sus propias entradas en el feed
   if (!isPro) {
-    const entriesQ = query(collection(db, "entries"), where("uid", "==", user.uid), orderBy("createdAt", "desc"));
+    const entriesQ = query(
+      collection(db, "entries"),
+      where("uid", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
     unsubEntries = onSnapshot(entriesQ, (snap) => {
       if (!entriesList) return;
       entriesList.innerHTML = "";
       if (snap.empty) { entriesList.innerHTML = "<p>No hay entradas</p>"; return; }
-      snap.forEach(d => entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true)));
+      snap.forEach(d => {
+        entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, false));
+      });
     });
   }
 });
@@ -352,174 +388,53 @@ onAuthStateChanged(auth, async (user) => {
 function buildEntryCard(e, showActions) {
   const div = document.createElement("div");
   div.className = "entry";
-  const canEdit = isPro || (currentUser && e.uid === currentUser.uid);
 
-  // Construye el contenido de la tarjeta según tipo
-  function renderContent() {
-    let html = `<div class="date">📅 ${formatDate(e.createdAt)}</div>`;
-    html += `<div><strong>${e.mood || e.sleepMood || e.type || "Entrada"}</strong></div>`;
-
-    if (e.type === "diary") {
-      html += e.moodText  ? `<div class="entryField" data-field="moodText">🧠 ${e.moodText}</div>`  : "";
-      html += e.good      ? `<div class="entryField" data-field="good">✨ ${e.good}</div>`          : "";
-      html += e.hard      ? `<div class="entryField" data-field="hard">💭 ${e.hard}</div>`          : "";
-    } else if (e.type === "emotion") {
-      html += e.intensity              ? `<div>💢 Intensidad: ${e.intensity}</div>`              : "";
-      html += e.bodySensations?.length ? `<div>🫀 ${e.bodySensations.join(", ")}</div>`          : "";
-      html += e.note                   ? `<div class="entryField" data-field="note">📝 ${e.note}</div>` : "";
-    } else if (e.type === "sleep") {
-      html += e.hours           ? `<div>⏰ ${e.hours}</div>`                                      : "";
-      html += e.details?.length ? `<div>💤 ${e.details.join(", ")}</div>`                         : "";
-      html += e.note            ? `<div class="entryField" data-field="note">📝 ${e.note}</div>`  : "";
-    } else if (e.type === "habits") {
-      html += e.habits?.length ? `<div>✅ ${e.habits.join(", ")}</div>`                           : "";
-      html += e.note           ? `<div class="entryField" data-field="note">📝 ${e.note}</div>`   : "";
-    }
-
-    if (canEdit) {
-      html += `
-        <div class="entryActions">
-          <button class="inlineEditBtn">✏️ Editar</button>
-          <button class="inlineDeleteBtn">🗑️</button>
-        </div>`;
-    }
-    return html;
+  let extra = "";
+  if (e.type === "emotion") {
+    extra = `
+      ${e.intensity           ? `<div>💢 Intensidad: ${e.intensity}</div>` : ""}
+      ${e.bodySensations?.length ? `<div>🫀 ${e.bodySensations.join(", ")}</div>` : ""}
+      ${e.note                ? `<div>📝 ${e.note}</div>` : ""}
+    `;
+  } else if (e.type === "sleep") {
+    extra = `
+      ${e.hours            ? `<div>⏰ ${e.hours}</div>` : ""}
+      ${e.details?.length  ? `<div>💤 ${e.details.join(", ")}</div>` : ""}
+      ${e.note             ? `<div>📝 ${e.note}</div>` : ""}
+    `;
+  } else if (e.type === "habits") {
+    extra = `
+      ${e.habits?.length ? `<div>✅ ${e.habits.join(", ")}</div>` : ""}
+      ${e.note           ? `<div>📝 ${e.note}</div>` : ""}
+    `;
+  } else {
+    extra = `
+      ${e.moodText ? `<div>🧠 ${e.moodText}</div>` : ""}
+      ${e.good     ? `<div>✨ ${e.good}</div>` : ""}
+      ${e.hard     ? `<div>💭 ${e.hard}</div>` : ""}
+    `;
   }
 
-  div.innerHTML = renderContent();
-
-  if (canEdit) {
-    // Borrar
-    div.querySelector(".inlineDeleteBtn")?.addEventListener("click", async () => {
-      await deleteDoc(doc(db, "entries", e.id));
-    });
-
-    // Editar: convierte los campos editables en textareas
-    div.querySelector(".inlineEditBtn")?.addEventListener("click", () => {
-      // Recoge campos editables según tipo
-      const fields = getEditableFields(e);
-
-      let editHtml = `<div class="date">📅 ${formatDate(e.createdAt)}</div>`;
-      editHtml += `<div><strong>${e.mood || e.sleepMood || e.type || "Entrada"}</strong></div>`;
-
-      fields.forEach(f => {
-        editHtml += `
-          <div class="editFieldGroup">
-            <label class="editFieldLabel">${f.label}</label>
-            <textarea class="editFieldTextarea" data-field="${f.key}" rows="3">${f.value || ""}</textarea>
-          </div>`;
-      });
-
-      editHtml += `
-        <div class="entryActions">
-          <button class="saveEditBtn">💾 Guardar</button>
-          <button class="cancelEditBtn">✕ Cancelar</button>
-        </div>`;
-
-      div.innerHTML = editHtml;
-
-      // Guardar
-      div.querySelector(".saveEditBtn")?.addEventListener("click", async () => {
-        const updates = {};
-        div.querySelectorAll(".editFieldTextarea").forEach(ta => {
-          updates[ta.dataset.field] = ta.value.trim();
-        });
-        await updateDoc(doc(db, "entries", e.id), updates);
-        // Actualiza el objeto local y vuelve a modo lectura
-        Object.assign(e, updates);
-        div.innerHTML = renderContent();
-        rebindActions();
-      });
-
-      // Cancelar
-      div.querySelector(".cancelEditBtn")?.addEventListener("click", () => {
-        div.innerHTML = renderContent();
-        rebindActions();
-      });
-    });
-  }
-
-  function rebindActions() {
-    div.querySelector(".inlineDeleteBtn")?.addEventListener("click", async () => {
-      await deleteDoc(doc(db, "entries", e.id));
-    });
-    div.querySelector(".inlineEditBtn")?.addEventListener("click", () => {
-      div.querySelector(".inlineEditBtn")?.click();
-    });
-    // Re-bind edit button properly
-    const editBtn = div.querySelector(".inlineEditBtn");
-    if (editBtn) {
-      editBtn.onclick = () => {
-        div.querySelector(".inlineEditBtn").dispatchEvent(new Event("click"));
-      };
-    }
-    // Easier: just rebuild the card
-    div.innerHTML = renderContent();
-    bindCard();
-  }
-
-  function bindCard() {
-    if (!canEdit) return;
-    div.querySelector(".inlineDeleteBtn")?.addEventListener("click", async () => {
-      await deleteDoc(doc(db, "entries", e.id));
-    });
-    div.querySelector(".inlineEditBtn")?.addEventListener("click", () => {
-      const fields = getEditableFields(e);
-      let editHtml = `<div class="date">📅 ${formatDate(e.createdAt)}</div>`;
-      editHtml += `<div><strong>${e.mood || e.sleepMood || e.type || "Entrada"}</strong></div>`;
-      fields.forEach(f => {
-        editHtml += `
-          <div class="editFieldGroup">
-            <label class="editFieldLabel">${f.label}</label>
-            <textarea class="editFieldTextarea" data-field="${f.key}" rows="3">${f.value || ""}</textarea>
-          </div>`;
-      });
-      editHtml += `
-        <div class="entryActions">
-          <button class="saveEditBtn">💾 Guardar</button>
-          <button class="cancelEditBtn">✕ Cancelar</button>
-        </div>`;
-      div.innerHTML = editHtml;
-
-      div.querySelector(".saveEditBtn")?.addEventListener("click", async () => {
-        const updates = {};
-        div.querySelectorAll(".editFieldTextarea").forEach(ta => {
-          updates[ta.dataset.field] = ta.value.trim();
-        });
-        await updateDoc(doc(db, "entries", e.id), updates);
-        Object.assign(e, updates);
-        div.innerHTML = renderContent();
-        bindCard();
-      });
-
-      div.querySelector(".cancelEditBtn")?.addEventListener("click", () => {
-        div.innerHTML = renderContent();
-        bindCard();
-      });
-    });
-  }
-
-  bindCard();
+  div.innerHTML = `
+    <div class="date">📅 ${formatDate(e.createdAt)}</div>
+    <div><strong>${e.mood || e.sleepMood || e.type || "Entrada"}</strong></div>
+    ${extra}
+    ${showActions ? `
+      <div class="entryActions">
+        <button onclick="editEntry('${e.id}', '${(e.moodText || "").replace(/'/g, "\\'")}')">✏️</button>
+        <button onclick="deleteEntry('${e.id}')">🗑️</button>
+      </div>` : ""}
+  `;
   return div;
 }
 
-// Devuelve los campos editables según el tipo de entrada
-function getEditableFields(e) {
-  if (e.type === "diary") {
-    return [
-      { key: "moodText", label: "🧠 ¿Cómo ha ido?",        value: e.moodText },
-      { key: "good",     label: "✨ Lo mejor del día",      value: e.good    },
-      { key: "hard",     label: "💭 Lo más difícil",        value: e.hard    },
-    ];
-  }
-  if (e.type === "emotion") {
-    return [{ key: "note", label: "📝 Nota", value: e.note }];
-  }
-  if (e.type === "sleep") {
-    return [{ key: "note", label: "📝 Nota", value: e.note }];
-  }
-  if (e.type === "habits") {
-    return [{ key: "note", label: "📝 Nota", value: e.note }];
-  }
-  return [];
-}
+// ---------------- GLOBAL ACTIONS ----------------
+window.deleteEntry = async (id) => {
+  await deleteDoc(doc(db, "entries", id));
+};
+
+window.editEntry = async (id, oldText) => {
+  const t = prompt("Editar texto:", oldText);
+  if (!t) return;
+  await updateDoc(doc(db, "entries", id), { moodText: t });
+};
