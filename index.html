@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mi diario</title>
 
-  <link rel="stylesheet" href="styles/style.css?v=3">
+  <link rel="stylesheet" href="styles/style.css?v=4">
 </head>
 
 <body>
@@ -33,7 +33,11 @@
 
   <div class="app">
 
-    <h1>Mi diario ✏️</h1>
+    <!-- HEADER con botón de perfil -->
+    <div class="appHeader">
+      <h1>Mi diario ✏️</h1>
+      <button id="navProfile" class="headerProfileBtn hidden" title="Mi perfil">👤</button>
+    </div>
 
     <!-- CONTENIDO SCROLLEABLE -->
     <div id="appContent">
@@ -91,9 +95,7 @@
       <!-- PROFESIONALES -->
       <div id="professional" class="screen hidden">
         <button id="backHomeProfessional">← Volver</button>
-
         <h2>👨‍⚕️ Pacientes</h2>
-
         <div id="patientsList"></div>
       </div>
 
@@ -229,37 +231,33 @@
     </div>
   </div>
 
-  <!-- FOOTER -->
+  <!-- FOOTER: solo 5 botones, sin Perfil -->
   <footer class="appFooter">
-    <button id="navHome">
+    <button id="navHome" data-screen="home">
       <span class="icon">🏠</span>
       <span>Inicio</span>
     </button>
-    <button id="navDiary">
+    <button id="navDiary" data-screen="diary">
       <span class="icon">📓</span>
       <span>Diario</span>
     </button>
-    <button id="navFeed">
+    <button id="navFeed" data-screen="feed">
       <span class="icon">📚</span>
       <span>Entradas</span>
     </button>
-    <button id="navEmotion">
+    <button id="navEmotion" data-screen="emotion">
       <span class="icon">😊</span>
       <span>Emoción</span>
     </button>
-    <button id="navSleep">
+    <button id="navSleep" data-screen="sleep">
       <span class="icon">🌙</span>
       <span>Sueño</span>
     </button>
-    <button id="navHabits">
+    <button id="navHabits" data-screen="habits">
       <span class="icon">🎯</span>
       <span>Hábitos</span>
     </button>
-    <button id="navProfile">
-      <span class="icon">👤</span>
-      <span>Perfil</span>
-    </button>
-    <button id="navProfessional" class="hidden">
+    <button id="navProfessional" data-screen="professional" class="hidden">
       <span class="icon">👨‍⚕️</span>
       <span>Pacientes</span>
     </button>
@@ -267,7 +265,7 @@
 
 </div>
 
-<script type="module" src="./script.js?v=3"></script>
+<script type="module" src="./script.js?v=4"></script>
 
 </body>
 </html>
