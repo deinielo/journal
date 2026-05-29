@@ -40,6 +40,7 @@ const screens = {
   habits:       $("habits"),
   feed:         $("patientDetail"),
   professional: $("professional"),
+  profile:      $("profile"),
 };
 
 const entriesList = $("patientEntriesList");
@@ -87,12 +88,14 @@ $("navEmotion")?.addEventListener("click",      () => show("emotion"));
 $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
 $("navProfessional")?.addEventListener("click", () => show("professional"));
+$("navProfile")?.addEventListener("click",      () => show("profile"));
 
 $("backHome1")?.addEventListener("click",            () => show("home"));
 $("backHome2")?.addEventListener("click",            () => show("home"));
 $("backHome3")?.addEventListener("click",            () => show("home"));
 $("backHome4")?.addEventListener("click",            () => show("home"));
 $("backHomeProfessional")?.addEventListener("click", () => show("home"));
+$("backHomeProfile")?.addEventListener("click",      () => show("home"));
 
 // "Volver" desde detalle de paciente → vuelve a la lista de pacientes
 $("backToPatients")?.addEventListener("click", () => show("professional"));
@@ -316,17 +319,24 @@ function openPatientDetail(patient) {
 // ---------------- AUTH STATE ----------------
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
-  if (!user) { show("auth"); return; }
+
+  if (!user) {
+    $("navProfile")?.classList.add("hidden");
+    show("auth");
+    return;
+  }
+
+  $("navProfile")?.classList.remove("hidden");
 
   const userRef = doc(db, "users", user.uid);
-  const snap    = await getDoc(userRef);
+  const snap = await getDoc(userRef);
 
   if (!snap.exists()) {
     await setDoc(userRef, {
-      email:       user.email,
+      email: user.email,
       displayName: user.displayName || "",
-      role:        "user",
-      createdAt:   serverTimestamp()
+      role: "user",
+      createdAt: serverTimestamp()
     });
   }
 
@@ -335,6 +345,7 @@ onAuthStateChanged(auth, async (user) => {
 
   // Mostrar home DESPUÉS de saber el rol
   show("home");
+  $("navProfile")?.classList.remove("hidden");
 
   // Botón profesionales: solo visible si es pro
   const navPro = $("navProfessional");
