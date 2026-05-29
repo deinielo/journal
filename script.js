@@ -89,6 +89,7 @@ $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
 $("navProfessional")?.addEventListener("click", () => show("professional"));
 $("navProfile")?.addEventListener("click",      () => show("profile"));
+$("navProfileFooter")?.addEventListener("click", () => show("profile"));
 
 $("backHome1")?.addEventListener("click",            () => show("home"));
 $("backHome2")?.addEventListener("click",            () => show("home"));
