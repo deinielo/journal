@@ -607,7 +607,7 @@ button:active,
   color: white; font-size: 18px; font-weight: 800; border: none;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,137,110,0.3);
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 .headerProfileBtn:hover { transform: scale(1.08); }
 
