@@ -76,10 +76,15 @@ function show(name) {
   screens[name]?.classList.remove("hidden");
   updateFooter(name);
 
-  // Al navegar al feed sin ser desde un paciente, cancela suscripción de paciente
-  // y carga las entradas propias del usuario
-  if (name === "feed" && !isPro) {
-    if (unsubPatientEntries) { unsubPatientEntries(); unsubPatientEntries = null; }
+  if (name === "feed") {
+    if (unsubPatientEntries) {
+      unsubPatientEntries();
+      unsubPatientEntries = null;
+    }
+
+    const h2 = $("patientDetail")?.querySelector("h2");
+    if (h2) h2.textContent = "Mis entradas";
+
     loadUserFeed();
   }
 }
