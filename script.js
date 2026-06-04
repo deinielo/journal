@@ -120,11 +120,21 @@ $("goDiary")?.addEventListener("click",   () => show("diary"));
 $("goEmotion")?.addEventListener("click", () => show("emotion"));
 $("goSleep")?.addEventListener("click",   () => show("sleep"));
 $("goHabits")?.addEventListener("click",  () => show("habits"));
-$("goFeed")?.addEventListener("click",    () => show("feed"));
+$("goFeed")?.addEventListener("click", () => {
+  if (!isPro) {
+    loadUserFeed();
+  }
+  show("feed");
+});
 
 $("navHome")?.addEventListener("click",         () => show("home"));
 $("navDiary")?.addEventListener("click",        () => show("diary"));
-$("navFeed")?.addEventListener("click",         () => show("feed"));
+$("navFeed")?.addEventListener("click", () => {
+  if (!isPro) {
+    loadUserFeed();
+  }
+  show("feed");
+});
 $("navEmotion")?.addEventListener("click",      () => show("emotion"));
 $("navSleep")?.addEventListener("click",        () => show("sleep"));
 $("navHabits")?.addEventListener("click",       () => show("habits"));
