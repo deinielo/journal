@@ -93,16 +93,23 @@ function updateFooter(screenName) {
 
 function loadUserFeed() {
   if (!currentUser || !entriesList) return;
-  if (unsubEntries) unsubEntries();
+
+  // Cancela suscripción de paciente si existe
+  if (unsubPatientEntries) { unsubPatientEntries(); unsubPatientEntries = null; }
+  if (unsubEntries) { unsubEntries(); unsubEntries = null; }
+
+  const h2 = $("patientDetail")?.querySelector("h2");
+  if (h2) h2.textContent = "Mis entradas";
+  entriesList.innerHTML = "";
+
   const q = query(
     collection(db, "entries"),
     where("uid", "==", currentUser.uid),
     orderBy("createdAt", "desc")
   );
+
   unsubEntries = onSnapshot(q, (snap) => {
     entriesList.innerHTML = "";
-    const h2 = $("patientDetail")?.querySelector("h2");
-    if (h2) h2.textContent = "Mis entradas";
     if (snap.empty) { entriesList.innerHTML = "<p>No hay entradas</p>"; return; }
     snap.forEach(d => entriesList.appendChild(buildEntryCard({ id: d.id, ...d.data() }, true)));
   });
