@@ -57,14 +57,36 @@
           <div id="contador-registros">0</div>
         </div>
 
-        <button id="goDiary">✍️ Escribir diario</button>
-        <button id="goEmotion">😊 Registrar emoción</button>
-        <button id="goSleep">😴 Registrar sueño</button>
-        <button id="goHabits">🧩 Registrar hábitos</button>
-        <button id="goFeed">📚 Ver todas mis entradas</button>
+<div id="home" class="screen hidden">
+
+  <div id="contador-wrapper">
+    <div id="contador-label">Registros guardados</div>
+    <div id="contador-registros">0</div>
+  </div>
+
+  <!-- NUEVO SISTEMA -->
+  <button id="goSelfKnowledge">🧠 Autoconocimiento</button>
+  <button id="goSkills">⚙️ Habilidades</button>
+
+  <button id="btnLogout" class="danger">Cerrar sesión</button>
+</div>
 
         <button id="btnLogout" class="danger">Cerrar sesión</button>
       </div>
+
+<div id="selfKnowledge" class="screen hidden">
+
+  <button id="backHomeSK">← Volver</button>
+
+  <h2>🧠 Autoconocimiento</h2>
+
+  <button id="goDiary">✍️ Diario</button>
+  <button id="goEmotion">😊 Emoción</button>
+  <button id="goSleep">😴 Sueño</button>
+  <button id="goHabits">🧩 Hábitos</button>
+  <button id="goFeed">📚 Entradas</button>
+
+</div>
 
       <!-- PERFIL -->
       <div id="profile" class="screen hidden">
@@ -85,6 +107,8 @@
         <div id="profileSavedMsg" class="successMsg hidden">✅ ¡Nombre guardado!</div>
       </div>
 
+
+      
       <!-- FEED / ENTRADAS -->
       <div id="patientDetail" class="screen hidden">
         <button id="backToPatients">← Volver</button>
