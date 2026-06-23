@@ -41,6 +41,7 @@ const screens = {
   feed:         $("patientDetail"),
   professional: $("professional"),
   profile:      $("profile"),
+  selfKnowledge: $("selfKnowledge"),
 };
 
 const entriesList = $("patientEntriesList");
@@ -130,6 +131,12 @@ $("goFeed")?.addEventListener("click", () => {
     loadUserFeed();
   }
   show("feed");
+$("goSelfKnowledge")?.addEventListener("click", () => {
+  show("selfKnowledge");
+});
+$("goSkills")?.addEventListener("click", () => {
+  showToast("⚙️ Habilidades aún no hecho");
+});
 });
 
 $("navHome")?.addEventListener("click",         () => show("home"));
