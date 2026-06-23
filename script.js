@@ -127,16 +127,16 @@ $("goEmotion")?.addEventListener("click", () => show("emotion"));
 $("goSleep")?.addEventListener("click",   () => show("sleep"));
 $("goHabits")?.addEventListener("click",  () => show("habits"));
 $("goFeed")?.addEventListener("click", () => {
-  if (!isPro) {
-    loadUserFeed();
-  }
+  if (!isPro) loadUserFeed();
   show("feed");
+});
+
 $("goSelfKnowledge")?.addEventListener("click", () => {
   show("selfKnowledge");
 });
+
 $("goSkills")?.addEventListener("click", () => {
   showToast("⚙️ Habilidades aún no hecho");
-});
 });
 
 $("navHome")?.addEventListener("click",         () => show("home"));
